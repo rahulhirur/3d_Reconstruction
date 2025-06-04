@@ -1,2 +1,10 @@
 # Ignore the 3D_construction_env directory
 3D_construction_env/
+# Ignore the __pycache__ directories
+__pycache__/
+# Ignore Python bytecode files
+*.pyc
+# Ignore the input folder
+input/
+# Ignore the output folder
+output/
