@@ -7,12 +7,7 @@ def main():
     """
     Main function to handle command line arguments and call the stereo_rectify function.
     """
-    ##############################################################################
     # Argument parser setup
-    ##############################################################################
-    # This sets up the command line argument parser to accept various parameters
-    # for the image rectification process. It includes paths for input images, calibration files,
-    # output directories, and options for resizing, perspective usage, and saving data.
     parser = argparse.ArgumentParser(description="Image Rectification Tool")
     parser.add_argument("--image1_path", type=str, required=True, help="Path to the left image")
     parser.add_argument("--image2_path", type=str, required=True, help="Path to the right image")
