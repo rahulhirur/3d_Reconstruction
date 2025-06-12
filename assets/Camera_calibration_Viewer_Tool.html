@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infographic: Stereo Camera System Specifications</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 320px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        .flow-arrow {
+            font-size: 2rem;
+            line-height: 1;
+            color: #ee9b00;
+        }
+        .math-block {
+            overflow-x: auto;
+            padding: 1rem;
+            background-color: #f8fafc;
+            border-radius: 0.5rem;
+            margin-bottom: 1.5rem;
+            font-family: 'Inter', sans-serif;
+            font-size: 1.125rem; /* text-lg */
+            color: #334155; /* text-slate-700 */
+        }
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            z-index: 100;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #005f73;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <div class="container mx-auto p-4 md:p-8">
+
+        <header class="text-center mb-12">
+            <h1 class="text-4xl md:text-5xl font-extrabold text-[#005f73] mb-2">Stereo Camera System Specifications</h1>
+            <p class="text-lg text-slate-600">A Technical Deep Dive into the Geometry of 3D Vision</p>
+        </header>
+
+        <div id="buttonContainer" class="flex justify-center mb-8">
+            <input type="file" id="fileInput" accept=".json" class="hidden">
+            <button id="loadDataBtn" class="bg-[#005f73] hover:bg-[#0a9396] text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
+                Load Data from JSON
+            </button>
+        </div>
+
+        <div id="loadingMessage" class="text-center text-slate-600 text-lg mb-8" style="display: none;">
+            <div class="spinner mx-auto mb-4"></div>
+            <p>Loading data...</p>
+        </div>
+        <div id="errorMessage" class="text-center text-red-600 font-bold text-xl mb-8" style="display: none;">
+            Error loading data. Please try again.
+        </div>
+
+        <main id="infographicContent" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" style="display: none;">
+            
+            <div class="md:col-span-2 lg:col-span-3 bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-[#005f73] mb-2">Understanding Camera Intrinsics: The Projection Model</h2>
+                <p class="text-slate-600 mb-4">The intrinsic camera matrix (K) is a fundamental concept in computer vision, describing the internal optical and geometric properties of a camera. It maps 3D camera coordinates to 2D pixel coordinates on the image sensor. The general form of the intrinsic matrix is as follows:</p>
+                <div class="overflow-x-auto rounded-lg bg-slate-50 p-2 mb-6">
+                    <table class="w-full text-center font-mono text-lg">
+                        <tbody class="text-slate-700">
+                            <tr>
+                                <td class="p-2">fx</td><td class="p-2">s</td><td class="p-2">cx</td>
+                            </tr>
+                             <tr>
+                                <td class="p-2">0</td><td class="p-2">fy</td><td class="p-2">cy</td>
+                            </tr>
+                             <tr>
+                                <td class="p-2">0</td><td class="p-2">0</td><td class="p-2">1</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <ul class="list-disc list-inside text-slate-600 mb-6">
+                    <li class="mb-2"><strong class="text-[#0a9396]">fx, fy (Focal Lengths):</strong> These represent the focal lengths of the camera lens along the x and y axes, respectively, expressed in pixel units. They determine the scaling from 3D world units to 2D pixel units.</li>
+                    <li class="mb-2"><strong class="text-[#0a9396]">s (Skew Coefficient):</strong> This term accounts for potential non-orthogonality between the x and y axes of the pixel grid. In most modern cameras, pixels are perfectly rectangular, making s approximately zero.</li>
+                    <li><strong class="text-[#0a9396]">cx, cy (Principal Point Coordinates):</strong> These are the coordinates (in pixels) of the principal point. This is the point where the optical axis of the camera intersects the image plane, serving as the origin for pixel coordinates.</li>
+                </ul>
+            </div>
+
+            <div class="md:col-span-2 lg:col-span-3 bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-[#005f73] mb-2">Camera Intrinsics: The 'Eyes' of the System (Data)</h2>
+                <p class="text-slate-600 mb-6">Intrinsic parameters define the unique optical properties of each camera, detailing how they convert the 3D world into a 2D image. Key metrics include focal length (how much the lens magnifies the view) and the principal point (the true center of the image). Below, we present the intrinsic matrices and compare these core values for both cameras in the system.</p>
+                
+                <div class="flex flex-col md:flex-row md:space-x-6">
+                    <div class="md:flex-1 mb-6 md:mb-0">
+                        <h3 class="text-xl font-semibold text-[#0a9396] mt-6 mb-2">Camera 1 Intrinsic Matrix</h3>
+                        <div class="overflow-x-auto rounded-lg bg-slate-50 p-2">
+                            <table class="w-full text-center font-mono text-sm">
+                                <tbody id="camera1-intrinsic-matrix-tbody" class="text-slate-700">
+                                    
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="md:flex-1">
+                        <h3 class="text-xl font-semibold text-[#ee9b00] mt-6 mb-2">Camera 2 Intrinsic Matrix</h3>
+                        <div class="overflow-x-auto rounded-lg bg-slate-50 p-2">
+                            <table class="w-full text-center font-mono text-sm">
+                                <tbody id="camera2-intrinsic-matrix-tbody" class="text-slate-700">
+                                    
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-container h-96 mt-6">
+                    <canvas id="intrinsicsChart"></canvas>
+                </div>
+            </div>
+
+            <div class="md:col-span-2 lg:col-span-3 bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-[#005f73] mb-2">Understanding Lens Distortion Coefficients</h2>
+                <p class="text-slate-600 mb-4">Real-world camera lenses introduce distortions that cause straight lines in a 3D scene to appear curved in the 2D image. These distortions are categorized into radial and tangential types, and are modeled by a set of coefficients:</p>
+                <ul class="list-disc list-inside text-slate-600 mb-6">
+                    <li class="mb-2"><strong class="text-[#0a9396]">Radial Distortion (k1, k2, k3):</strong> This is the most common type, causing points to appear either further from (barrel distortion) or closer to (pincushion distortion) the image center than they should be. The effect increases with distance from the image center.</li>
+                    <li><strong class="text-[#0a9396]">Tangential Distortion (p1, p2):</strong> This occurs when the lens is not perfectly aligned parallel to the image sensor. It causes points to shift tangentially relative to the optical axis.</li>
+                </ul>
+                <p class="text-slate-600 mb-4">These coefficients are used in mathematical formulas to correct the pixel coordinates and produce an undistorted image, making the camera model more accurate for precise measurements.</p>
+            </div>
+
+            <div class="md:col-span-2 lg:col-span-3 bg-white rounded-lg shadow-lg p-6">
+                 <h2 class="text-2xl font-bold text-[#005f73] mb-2">Distortion Profiles: Correcting Lens Imperfections (Data)</h2>
+                <p class="text-slate-600 mb-6">No lens is perfect. These coefficients model the specific radial and tangential distortion of each lens, allowing software to correct for warping effects and ensure straight lines in reality are also straight in the image data. Below, we present the distortion coefficients for each camera and visualize their relative magnitudes.</p>
+                
+                <div class="flex flex-col md:flex-row md:space-x-6">
+                    <div class="md:flex-1 mb-6 md:mb-0">
+                        <h3 class="text-xl font-semibold text-[#0a9396] mt-6 mb-2">Camera 1 Distortion Coefficients</h3>
+                        <div class="overflow-x-auto rounded-lg bg-slate-50 p-2">
+                            <table class="w-full text-center font-mono text-sm">
+                                <tbody id="camera1-distortion-tbody" class="text-slate-700">
+                                    
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="md:flex-1">
+                        <h3 class="text-xl font-semibold text-[#ee9b00] mt-6 mb-2">Camera 2 Distortion Coefficients</h3>
+                        <div class="overflow-x-auto rounded-lg bg-slate-50 p-2">
+                            <table class="w-full text-center font-mono text-sm">
+                                <tbody id="camera2-distortion-tbody" class="text-slate-700">
+                                    
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+                    <div class="chart-container">
+                        <canvas id="k1Chart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="k2Chart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="k3Chart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="p1Chart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="p2Chart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="md:col-span-2 lg:col-span-3 bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-[#005f73] mb-2">Extrinsic Parameters: 3D Spatial Relationship</h2>
+                <p class="text-slate-600 mb-6">Extrinsic parameters define the exact position and orientation of one camera relative to the other in 3D space. This rigid relationship, composed of a rotation and a translation, is the foundation for stereo triangulation and accurate 3D reconstruction of the environment captured by both cameras.</p>
+                
+                <div class="flex flex-col md:flex-row md:space-x-6 mt-6">
+                    <div class="md:flex-1 mb-6 md:mb-0">
+                        <h3 class="text-xl font-semibold text-[#0a9396] mb-2">Rotation Matrix (R)</h3>
+                        <p class="text-slate-500 mb-4">The rotational offset from Camera 1 to Camera 2.</p>
+                        <div class="overflow-x-auto rounded-lg bg-slate-50 p-2">
+                            <table class="w-full text-center font-mono text-sm">
+                                <tbody id="rotation-matrix-tbody" class="text-slate-700">
+                                    
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="md:flex-1">
+                        <h3 class="text-xl font-semibold text-[#0a9396] mb-2">Translation Vector (T) in Meters</h3>
+                         <p class="text-slate-500 mb-4">The Positional offset from Camera 1 to Camera 2.</p>
+                        <div class="space-y-3">
+                            <div class="flex items-center bg-slate-50 p-3 rounded-lg"><span class="text-2xl mr-4">↔️</span><span class="font-bold text-slate-700">X-axis:</span><span class="ml-auto font-mono text-lg text-[#ca6702]" id="translation-x"></span></div>
+                            <div class="flex items-center bg-slate-50 p-3 rounded-lg"><span class="text-2xl mr-4">↕️</span><span class="font-bold text-slate-700">Y-axis:</span><span class="ml-auto font-mono text-lg text-[#ca6702]" id="translation-y"></span></div>
+                            <div class="flex items-center bg-slate-50 p-3 rounded-lg"><span class="text-2xl mr-4">↗️</span><span class="font-bold text-slate-700">Z-axis:</span><span class="ml-auto font-mono text-lg text-[#ca6702]" id="translation-z"></span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="md:col-span-2 lg:col-span-3 bg-white rounded-lg shadow-lg p-8 flex flex-col md:flex-row items-center justify-center text-center">
+                <div class="md:mr-12 mb-6 md:mb-0">
+                    <h2 class="text-2xl font-bold text-[#005f73] mb-2">System Baseline Distance</h2>
+                    <p class="text-slate-600 mb-4">The precise physical separation between the two camera centers, critical for depth perception accuracy.</p>
+                </div>
+                <div class="text-7xl font-black text-[#ee9b00]" id="baseline-distance">
+                    1.02<span class="text-4xl font-semibold text-slate-500 ml-2">m</span>
+                </div>
+            </div>
+
+            <div class="md:col-span-2 lg:col-span-3 bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-[#005f73] mb-2">Image Processing Pipeline</h2>
+                <p class="text-slate-600 mb-8 text-center">For optimal performance, raw images are resized before analysis. The system applies a uniform scaling factor to reduce the image dimensions, ensuring faster processing while maintaining sufficient detail for feature extraction.</p>
+                <div class="flex flex-col md:flex-row items-center justify-center space-y-4 md:space-y-0 md:space-x-4">
+                    <div class="text-center p-4 rounded-lg border-2 border-slate-200">
+                        <div class="text-slate-500 text-sm font-bold">ORIGINAL IMAGE</div>
+                        <div class="text-2xl font-extrabold text-[#005f73]" id="original-image-size"></div>
+                    </div>
+                    <div class="flow-arrow font-sans transform md:-rotate-90">→</div>
+                    <div class="text-center p-4 rounded-lg bg-[#e9d8a6] text-[#ca6702]">
+                         <div class="text-sm font-bold opacity-80">SCALE FACTOR</div>
+                        <div class="text-2xl font-extrabold" id="scale-factor"></div>
+                    </div>
+                    <div class="flow-arrow font-sans transform md:-rotate-90">→</div>
+                    <div class="text-center p-4 rounded-lg border-2 border-[#94d2bd]">
+                        <div class="text-[#0a9396] text-sm font-bold">PROCESSED IMAGE</div>
+                        <div class="text-2xl font-extrabold text-[#005f73]" id="resized-image-size"></div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <footer class="text-center mt-12 text-slate-500 text-sm">
+            <p>Infographic generated based on stereo camera calibration data. All visualizations rendered using HTML5 Canvas.</p>
+            <p>No SVG or Mermaid JS were used in the creation of this document.</p>
+        </footer>
+    </div>
+
+    <script>
+        const brilliantBlues = {
+            primary: '#0a9396',
+            secondary: '#94d2bd',
+            accent: '#ee9b00',
+            dark: '#005f73',
+            danger: '#ae2012',
+            text: '#334155'
+        };
+
+        function formatLabel(str, maxWidth) {
+            const words = str.split(' ');
+            let lines = [];
+            let currentLine = words[0];
+
+            if (str.length <= maxWidth) {
+                return str;
+            }
+
+            for (let i = 1; i < words.length; i++) {
+                if (currentLine.length + words[i].length + 1 < maxWidth) {
+                    currentLine += ' ' + words[i];
+                } else {
+                    lines.push(currentLine);
+                    currentLine = words[i];
+                }
+            }
+            lines.push(currentLine);
+            return lines;
+        }
+
+        const tooltipTitleCallback = (tooltipItems) => {
+            const item = tooltipItems[0];
+            let label = item.chart.data.labels[item.dataIndex];
+            if (Array.isArray(label)) {
+                return label.join(' ');
+            } else {
+                return label;
+            }
+        };
+
+        // Function to populate a matrix table
+        function populateMatrixTable(tableBodyId, matrixData) {
+            const tbody = document.getElementById(tableBodyId);
+            tbody.innerHTML = ''; // Clear existing content
+            matrixData.forEach(row => {
+                const tr = document.createElement('tr');
+                row.forEach(cell => {
+                    const td = document.createElement('td');
+                    td.className = 'p-2';
+                    td.textContent = cell.toFixed(2);
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Function to populate distortion coefficients table
+        function populateDistortionTable(tableBodyId, distCoeffs) {
+            const tbody = document.getElementById(tableBodyId);
+            tbody.innerHTML = ''; // Clear existing content
+            const labels = ['k1', 'k2', 'k3', 'p1', 'p2'];
+            
+            // Create two rows for better layout
+            const tr1 = document.createElement('tr');
+            const tr2 = document.createElement('tr');
+
+            for (let i = 0; i < labels.length; i++) {
+                const td = document.createElement('td');
+                td.className = 'p-2';
+                td.textContent = `${labels[i]}: ${distCoeffs[i].toFixed(3)}`;
+                
+                if (i < 3) { // k1, k2, k3 in first row
+                    tr1.appendChild(td);
+                } else { // p1, p2 in second row
+                    tr2.appendChild(td);
+                }
+            }
+            tbody.appendChild(tr1);
+            tbody.appendChild(tr2);
+        }
+
+        // Chart instances to be updated
+        let intrinsicsChart;
+        let k1Chart, k2Chart, k3Chart, p1Chart, p2Chart;
+
+        // Function to initialize or update charts
+        function initOrUpdateCharts(data) {
+            // Intrinsics Chart
+            const intrinsicsData = {
+                labels: ['Focal Length (fx)', 'Focal Length (fy)', 'Principal Point (cx)', 'Principal Point (cy)'],
+                datasets: [{
+                    label: 'Camera 1',
+                    data: [
+                        data.camera_matrix_1[0][0],
+                        data.camera_matrix_1[1][1],
+                        data.camera_matrix_1[0][2],
+                        data.camera_matrix_1[1][2]
+                    ],
+                    backgroundColor: brilliantBlues.primary,
+                    borderColor: brilliantBlues.dark,
+                    borderWidth: 2,
+                    borderRadius: 4
+                }, {
+                    label: 'Camera 2',
+                    data: [
+                        data.camera_matrix_2[0][0],
+                        data.camera_matrix_2[1][1],
+                        data.camera_matrix_2[0][2],
+                        data.camera_matrix_2[1][2]
+                    ],
+                    backgroundColor: brilliantBlues.accent,
+                    borderColor: brilliantBlues.dark,
+                    borderWidth: 2,
+                    borderRadius: 4
+                }]
+            };
+
+            if (intrinsicsChart) {
+                intrinsicsChart.data = intrinsicsData;
+                intrinsicsChart.update();
+            } else {
+                intrinsicsChart = new Chart(document.getElementById('intrinsicsChart'), {
+                    type: 'bar',
+                    data: intrinsicsData,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    title: tooltipTitleCallback
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Intrinsic Parameters Comparison (in pixels)',
+                                font: { size: 16 },
+                                color: brilliantBlues.text,
+                                padding: {
+                                    bottom: 20
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: false,
+                                grid: {
+                                   color: '#e2e8f0'
+                                }
+                            },
+                            x: {
+                               grid: {
+                                   display: false
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Individual distortion charts
+            const distCoeffsCam1 = data.dist_coeff_1;
+            const distCoeffsCam2 = data.dist_coeff_2;
+            const distortionLabels = ['k1', 'k2', 'k3', 'p1', 'p2'];
+            const chartInstances = [k1Chart, k2Chart, k3Chart, p1Chart, p2Chart];
+            const chartElements = ['k1Chart', 'k2Chart', 'k3Chart', 'p1Chart', 'p2Chart'];
+
+            distortionLabels.forEach((label, index) => {
+                const chartData = {
+                    labels: ['Camera 1', 'Camera 2'],
+                    datasets: [{
+                        label: `Camera 1 ${label}`,
+                        data: [distCoeffsCam1[index]],
+                        backgroundColor: brilliantBlues.primary,
+                        borderColor: brilliantBlues.dark,
+                        borderWidth: 2,
+                        borderRadius: 4
+                    }, {
+                        label: `Camera 2 ${label}`,
+                        data: [distCoeffsCam2[index]],
+                        backgroundColor: brilliantBlues.accent,
+                        borderColor: brilliantBlues.dark,
+                        borderWidth: 2,
+                        borderRadius: 4
+                    }]
+                };
+
+                if (chartInstances[index]) {
+                    chartInstances[index].data = chartData;
+                    chartInstances[index].update();
+                } else {
+                    chartInstances[index] = new Chart(document.getElementById(chartElements[index]), {
+                        type: 'bar',
+                        data: chartData,
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    display: false
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        title: tooltipTitleCallback,
+                                        label: function(context) {
+                                            return `${context.dataset.label}: ${context.raw.toFixed(3)}`;
+                                        }
+                                    }
+                                },
+                                title: {
+                                    display: true,
+                                    text: `Distortion Coefficient: ${label}`,
+                                    font: { size: 14 },
+                                    color: brilliantBlues.text,
+                                    padding: {
+                                        bottom: 10
+                                    }
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    grid: {
+                                       color: '#e2e8f0'
+                                    }
+                                },
+                                x: {
+                                   grid: {
+                                       display: false
+                                    },
+                                    ticks: {
+                                        font: {
+                                            size: 10
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const fileInput = document.getElementById('fileInput');
+            const loadDataBtn = document.getElementById('loadDataBtn');
+            const loadingMessage = document.getElementById('loadingMessage');
+            const errorMessage = document.getElementById('errorMessage');
+            const infographicContent = document.getElementById('infographicContent');
+            const buttonContainer = document.getElementById('buttonContainer'); // Get the button container
+
+            // Initially hide the infographic content
+            infographicContent.style.display = 'none';
+
+            loadDataBtn.addEventListener('click', () => {
+                fileInput.click(); // Trigger the hidden file input click
+            });
+
+            fileInput.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (!file) {
+                    errorMessage.textContent = 'No file selected.';
+                    errorMessage.style.display = 'block';
+                    loadingMessage.style.display = 'none';
+                    return;
+                }
+
+                loadingMessage.style.display = 'block';
+                errorMessage.style.display = 'none';
+                infographicContent.style.display = 'none'; // Hide content while loading
+
+                const reader = new FileReader();
+
+                reader.onload = (e) => {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        
+                        // Populate Camera Intrinsic Matrices
+                        populateMatrixTable('camera1-intrinsic-matrix-tbody', data.camera_matrix_1);
+                        populateMatrixTable('camera2-intrinsic-matrix-tbody', data.camera_matrix_2);
+
+                        // Populate Distortion Coefficients Tables
+                        populateDistortionTable('camera1-distortion-tbody', data.dist_coeff_1);
+                        populateDistortionTable('camera2-distortion-tbody', data.dist_coeff_2);
+
+                        // Populate Rotation Matrix
+                        populateMatrixTable('rotation-matrix-tbody', data.Rot_mat);
+
+                        // Populate Translation Vector
+                        document.getElementById('translation-x').textContent = `${data.Trans_vect[0][0].toFixed(3)} m`;
+                        document.getElementById('translation-y').textContent = `${data.Trans_vect[1][0].toFixed(3)} m`;
+                        document.getElementById('translation-z').textContent = `${data.Trans_vect[2][0].toFixed(3)} m`;
+
+                        // Populate System Baseline Distance (still hardcoded as it's not in the provided JSON, but was part of the original infographic)
+                        document.getElementById('baseline-distance').innerHTML = `1.02<span class="text-4xl font-semibold text-slate-500 ml-2">m</span>`;
+
+                        // Populate Image Processing Pipeline
+                        const originalWidth = data.image_size_resized[0] / data.scale_factor_applied;
+                        const originalHeight = data.image_size_resized[1] / data.scale_factor_applied;
+                        document.getElementById('original-image-size').textContent = `${originalWidth} x ${originalHeight} px`;
+                        document.getElementById('resized-image-size').textContent = `${data.image_size_resized[0]} x ${data.image_size_resized[1]} px`;
+                        document.getElementById('scale-factor').textContent = `${data.scale_factor_applied}x`;
+
+                        // Initialize or update charts with the new data
+                        initOrUpdateCharts(data);
+
+                        loadingMessage.style.display = 'none';
+                        infographicContent.style.display = 'grid'; // Show content after loading
+                        buttonContainer.style.display = 'none'; // Hide the button container after successful load
+                    } catch (parseError) {
+                        console.error('Error parsing JSON:', parseError);
+                        errorMessage.textContent = 'Error parsing JSON data. Please ensure the file is valid JSON.';
+                        errorMessage.style.display = 'block';
+                        loadingMessage.style.display = 'none';
+                    }
+                };
+
+                reader.onerror = () => {
+                    console.error('Error reading file:', reader.error);
+                    errorMessage.textContent = 'Error reading the file. Please try again.';
+                    errorMessage.style.display = 'block';
+                    loadingMessage.style.display = 'none';
+                };
+
+                reader.readAsText(file); // Read the selected file as text
+            });
+        });
+    </script>
+
+</body>
+</html>
