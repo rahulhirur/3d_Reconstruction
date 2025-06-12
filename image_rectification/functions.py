@@ -380,7 +380,7 @@ def load_scaled_calibration_parameters(json_file_path):
     return loaded_params
 
 
-def update_calibration_data_scaled(K1_scaled, D1_scaled, K2_scaled, D2_scaled, R_scaled, T_scaled, img_size, new_scale_factor, html_path="/assets/template.html", output_dir="/output"):
+def create_calibration_data_report(K1_scaled, D1_scaled, K2_scaled, D2_scaled, R_scaled, T_scaled, img_size, new_scale_factor, html_path="/assets/camera_calibration_template.html", output_dir="/output"):
     """
     Updates the calibrationData object in an HTML file with new scaled camera parameters.
 

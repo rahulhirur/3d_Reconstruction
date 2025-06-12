@@ -87,6 +87,7 @@ def stereo_rectify(
         T_scaled = T_2_to_1
 
     if save_data:
+        
         # Save rectified images and scaled calibration parameters
         save_images(rectified_img1, rectified_img2, output_base_dir=output_base_dir)
 
@@ -94,10 +95,10 @@ def stereo_rectify(
                                             R_scaled, T_scaled, img_size, new_scale_factor,
                                             output_dir=output_base_dir)
         
-        update_calibration_data_scaled(K1_scaled, D1_scaled, K2_scaled, D2_scaled,
+        create_calibration_data_report(K1_scaled, D1_scaled, K2_scaled, D2_scaled,
                                         R_scaled, T_scaled, img_size, new_scale_factor, html_path="assets/template.html",
                                         output_dir=output_base_dir)
-
+        
     if show_images:
         
         # Show rectified stereo images
