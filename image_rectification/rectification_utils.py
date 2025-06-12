@@ -67,7 +67,6 @@ def stereo_rectify(
     # Get scaled calibration parameters for the new image size
     K1_scaled, D1_scaled, K2_scaled, D2_scaled, R_scaled, T_scaled = calib_yaml.get_all_calibration(new_scale_factor)
 
-
     if cam1_perspective:
         # Generate rectification maps using the scaled parameters and new image size
         map1x, map1y, map2x, map2y, P1, P2, Q = generate_rectify_data(K1_scaled, K2_scaled,  R_scaled, T_scaled, D1_scaled, D2_scaled, img_size)
@@ -79,7 +78,6 @@ def stereo_rectify(
         R_2_to_1 = R_scaled.T
         T_2_to_1 = -R_scaled.T @ T_scaled
         # Generate rectify data with right camera as reference
-
         map_x_new_1, map_y_new_1, map_x_new_2, map_y_new_2, P1_new, P2_new, Q_new = generate_rectify_data(K2_scaled, K1_scaled, R_2_to_1, T_2_to_1, D2_scaled, D1_scaled, img_size)
 
         rectified_img2 = rectify(img_2_resized, map_x_new_1, map_y_new_1)
@@ -88,16 +86,19 @@ def stereo_rectify(
         R_scaled = R_2_to_1
         T_scaled = T_2_to_1
 
-
-
     if save_data:
+        
         # Save rectified images and scaled calibration parameters
         save_images(rectified_img1, rectified_img2, output_base_dir=output_base_dir)
 
         save_scaled_calibration_parameters(K1_scaled, D1_scaled, K2_scaled, D2_scaled,
                                             R_scaled, T_scaled, img_size, new_scale_factor,
                                             output_dir=output_base_dir)
-
+        
+        create_calibration_data_report(K1_scaled, D1_scaled, K2_scaled, D2_scaled,
+                                        R_scaled, T_scaled, img_size, new_scale_factor, html_path="assets/template.html",
+                                        output_dir=output_base_dir)
+        
     if show_images:
         
         # Show rectified stereo images
@@ -107,5 +108,8 @@ def stereo_rectify(
             rectified_img1 = cv2.cvtColor(rectified_img1, cv2.COLOR_GRAY2BGR)
             rectified_img2 = cv2.cvtColor(rectified_img2, cv2.COLOR_GRAY2BGR)
 
-        show_image(np.concatenate([rectified_img2,line_img,rectified_img1], axis=1))
+        if cam1_perspective:
+            show_image(np.concatenate([rectified_img1,line_img,rectified_img2], axis=1))
+        else:
+            show_image(np.concatenate([rectified_img2,line_img,rectified_img1], axis=1))
 

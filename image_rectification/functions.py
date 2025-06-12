@@ -3,7 +3,7 @@ import json
 import numpy as np
 import os
 import yaml
-
+import re
 import sys
 
 def is_colab():
@@ -234,7 +234,7 @@ def resize_image(image, scale_factor):
 
     return resized_image, (new_width, new_height)
 
-def save_images(rectified_img1, rectified_img2, output_base_dir="/rectified_images"):
+def save_images(rectified_img1, rectified_img2, output_base_dir="/output"):
     """
     Saves two rectified images to a specified output directory.
 
@@ -267,7 +267,7 @@ def save_images(rectified_img1, rectified_img2, output_base_dir="/rectified_imag
 
 def save_scaled_calibration_parameters(K1_scaled, D1_scaled, K2_scaled, D2_scaled,
                                        R_scaled, T_scaled, img_size, new_scale_factor,
-                                       output_dir="/rectified_images"):
+                                       output_dir="/output"):
     """
     Saves scaled camera calibration parameters to a JSON file.
 
@@ -306,7 +306,10 @@ def save_scaled_calibration_parameters(K1_scaled, D1_scaled, K2_scaled, D2_scale
         "Rot_mat": R_scaled_list,
         "Trans_vect": T_scaled_list,
         "image_size_resized": img_size,
-        "scale_factor_applied": new_scale_factor
+        "image_size_actual": (np.array(img_size)*(1/0.25)).tolist(),
+        "scale_factor_applied": new_scale_factor,
+        "baseline_distance": np.linalg.norm(T_scaled)  # Distance between cameras
+
     }
 
     # Define the output JSON file path
@@ -375,5 +378,68 @@ def load_scaled_calibration_parameters(json_file_path):
         print(f"An unexpected error occurred while reading the JSON file: {e}")
 
     return loaded_params
+
+
+def create_calibration_data_report(K1_scaled, D1_scaled, K2_scaled, D2_scaled, R_scaled, T_scaled, img_size, new_scale_factor, html_path="/assets/camera_calibration_template.html", output_dir="/output"):
+    """
+    Updates the calibrationData object in an HTML file with new scaled camera parameters.
+
+    Parameters:
+        html_path (str): Path to the input HTML file.
+        output_path (str): Path to save the updated HTML file.
+        K1_scaled, K2_scaled (list of list): 3x3 camera matrix.
+        D1_scaled, D2_scaled (list): Distortion coefficients.
+        R_scaled (list of list): 3x3 rotation matrix.
+        T_scaled (list of list): 3x1 translation vector.
+        img_size (list): New image size [width, height].
+        new_scale_factor (float): New scale factor.
+    """
+    with open(html_path, "r", encoding="utf-8") as f:
+        html = f.read()
+
+    # Extract calibrationData JS object using regex
+    pattern = r"(const calibrationData\s*=\s*)(\{.*?\})(\s*;)"
+    match = re.search(pattern, html, re.DOTALL)
+    if not match:
+        raise ValueError("calibrationData block not found in the HTML.")
+
+    prefix, js_object_str, suffix = match.groups()
+
+    # Convert JS object to JSON-compatible string
+    json_compatible = re.sub(r'(\w+):', r'"\1":', js_object_str)
+    json_compatible = json_compatible.replace(";", "")
+    data = json.loads(json_compatible)
+
+    # Convert NumPy arrays to lists for JSON serialization
+    K1_scaled_list = K1_scaled.tolist()
+    D1_scaled_list = D1_scaled.tolist()
+    K2_scaled_list = K2_scaled.tolist()
+    D2_scaled_list = D2_scaled.tolist()
+    R_scaled_list = R_scaled.tolist()
+    T_scaled_list = T_scaled.tolist()
+
+    # Apply updates
+    data["camera_matrix_1"] = K1_scaled_list
+    data["dist_coeff_1"] = D1_scaled_list
+    data["camera_matrix_2"] = K2_scaled_list
+    data["dist_coeff_2"] = D2_scaled_list
+    data["Rot_mat"] = R_scaled_list
+    data["Trans_vect"] = T_scaled_list
+    data["image_size_resized"] = img_size
+    data["scale_factor_applied"] = new_scale_factor
+    data["image_size_original"] = (np.array(img_size) * (1 / new_scale_factor)).tolist()  # Original size
+    data["baseline_distance"] = np.linalg.norm(T_scaled_list)  # Distance between cameras L2 Distance
+
+    # Convert back to JS-style object string
+    new_js = json.dumps(data, indent=4)
+    new_js = re.sub(r'"(\w+)":', r'\1:', new_js)
+
+    updated_html = html[:match.start()] + prefix + new_js + suffix + html[match.end():]
+
+    with open(os.path.join(output_dir, "Stereo_Calibration_Parameters.html"), "w", encoding="utf-8") as f:
+        f.write(updated_html)
+
+    print(f"calibrationData updated and saved to '{output_dir}'")
+
 
 
