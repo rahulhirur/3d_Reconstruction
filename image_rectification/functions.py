@@ -6,6 +6,14 @@ import yaml
 import re
 import sys
 
+def read_image(file):
+    if isinstance(file, str):
+        return cv2.imread(file)
+    elif hasattr(file, 'read'):
+        return cv2.imdecode(np.frombuffer(file.read(), np.uint8), cv2.IMREAD_COLOR)
+    else:
+        return None
+
 def is_colab():
   return 'google.colab' in sys.modules
 
@@ -93,8 +101,16 @@ class JsonCameraCalibration:
     def __init__(self, json_file_path):
 
         try:
-            with open(json_file_path, 'r') as f:
-                self.calibration_data = json.load(f)
+
+            if isinstance(json_file_path, str):
+                
+                with open(json_file_path, 'r') as f:
+                    self.calibration_data = json.load(f)
+            
+            elif hasattr(json_file_path, 'read'):
+
+                self.calibration_data = json.load(json_file_path)
+        
         except FileNotFoundError:
             raise FileNotFoundError(f"JSON file not found: {json_file_path}")
         except json.JSONDecodeError:
@@ -175,19 +191,52 @@ class JsonCameraCalibration:
 
 class CalibrationLoader:
     def __init__(self, file_path):
-        self.file_path = file_path
-        ext = os.path.splitext(file_path)[1].lower()
+        if isinstance(file_path, str):
+
+            ext = os.path.splitext(file_path)[1].lower()
+            self.file_path = file_path
+
+        elif hasattr(file_path, 'read'):
+            
+            ext = os.path.splitext(file_path.name)[1].lower()
+            self.file_path = file_path.name
 
         if ext in ['.json']:
             self.loader = JsonCameraCalibration(file_path)
+
         elif ext in ['.yaml', '.yml']:
             self.loader = YamlCameraCalibration(file_path)
+            
         else:
             raise ValueError(f"Unsupported file extension: {ext}")
 
-    def get_all_calibration(self, scale_factor):
-        return self.loader.get_all_calibration(scale_factor)
+    def get_all_calibration(self, scale_factor, dict_format=False):
 
+        if dict_format:
+            K1, D1, K2, D2, R, T = self.loader.get_all_calibration(scale_factor)
+            return {
+                "K1": K1,
+                "D1": D1,
+                "K2": K2,
+                "D2": D2,
+                "R": R,
+                "T": T
+            }
+        else:
+            return self.loader.get_all_calibration(scale_factor)
+
+    def is_valid(self):
+        """
+        Checks if the calibration file is valid by attempting to load it.
+        Returns True if successful, False otherwise.
+        """
+        try:
+            self.loader.get_all_calibration(1.0)  # Try loading with scale factor 1.0
+            return True
+        except Exception as e:
+            print(f"Error loading calibration data: {e}")
+            return False
+    
     def close(self):
         if hasattr(self.loader, 'close'):
             self.loader.close()
@@ -228,11 +277,11 @@ def resize_image(image, scale_factor):
     # Calculate new dimensions
     new_width = int(original_width * scale_factor)
     new_height = int(original_height * scale_factor)
-
+    
     # Resize the image
     resized_image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_LINEAR)
 
-    return resized_image, (new_width, new_height)
+    return resized_image, (new_height, new_width)
 
 def save_images(rectified_img1, rectified_img2, output_base_dir="/output"):
     """
@@ -306,7 +355,7 @@ def save_scaled_calibration_parameters(K1_scaled, D1_scaled, K2_scaled, D2_scale
         "Rot_mat": R_scaled_list,
         "Trans_vect": T_scaled_list,
         "image_size_resized": img_size,
-        "image_size_actual": (np.array(img_size)*(1/0.25)).tolist(),
+        "image_size_actual": (np.array(img_size)*(1/new_scale_factor)).tolist(),
         "scale_factor_applied": new_scale_factor,
         "baseline_distance": np.linalg.norm(T_scaled)  # Distance between cameras
 
@@ -341,8 +390,14 @@ def load_scaled_calibration_parameters(json_file_path):
     """
     loaded_params = None
     try:
-        with open(json_file_path, 'r') as f:
-            loaded_data = json.load(f)
+
+        if isinstance(json_file_path, str):
+            
+            with open(json_file_path, 'r') as f:
+                loaded_data = json.load(f)
+        
+        elif hasattr(json_file_path, 'read'):
+            loaded_data = json.load(json_file_path)
 
         # Extract the required variables, converting lists back to numpy arrays
         K1_scaled = np.array(loaded_data["camera_matrix_1"])
@@ -379,8 +434,7 @@ def load_scaled_calibration_parameters(json_file_path):
 
     return loaded_params
 
-
-def create_calibration_data_report(K1_scaled, D1_scaled, K2_scaled, D2_scaled, R_scaled, T_scaled, img_size, new_scale_factor, html_path="/assets/camera_calibration_template.html", output_dir="/output"):
+def create_calibration_data_report(K1_scaled, D1_scaled, K2_scaled, D2_scaled, R_scaled, T_scaled, img_size, new_scale_factor, output_dir="output", html_path="assets/camera_calibration_template.html"):
     """
     Updates the calibrationData object in an HTML file with new scaled camera parameters.
 
@@ -394,6 +448,15 @@ def create_calibration_data_report(K1_scaled, D1_scaled, K2_scaled, D2_scaled, R
         img_size (list): New image size [width, height].
         new_scale_factor (float): New scale factor.
     """
+    # Print current working directory for debugging
+
+    print(f"Current working directory: {os.getcwd()}")
+    
+    #check if file exists or not
+    if not os.path.exists(html_path):
+        raise FileNotFoundError(f"HTML template file not found: {html_path}")
+    
+
     with open(html_path, "r", encoding="utf-8") as f:
         html = f.read()
 
@@ -440,6 +503,4 @@ def create_calibration_data_report(K1_scaled, D1_scaled, K2_scaled, D2_scaled, R
         f.write(updated_html)
 
     print(f"calibrationData updated and saved to '{output_dir}'")
-
-
 

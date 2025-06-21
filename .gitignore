@@ -8,3 +8,5 @@ __pycache__/
 input/
 # Ignore the output folder
 output/
+# Ignore the GroundTruth folder
+GroundTruth/
