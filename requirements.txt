@@ -2,3 +2,6 @@ numpy
 opencv-python
 PyYAML
 open3d
+streamlit
+streamlit-tile
+plotly

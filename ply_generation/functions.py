@@ -13,6 +13,7 @@ import plotly.express as px
 from scipy.ndimage import zoom
 import os
 
+
 class bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -112,10 +113,20 @@ def load_scaled_calibration_parameters(json_file_path):
                       'K1_scaled', 'D1_scaled', 'K2_scaled', 'D2_scaled',
                       'R_scaled', 'T_scaled', 'image_size_resized', 'scale_factor_applied'.
     """
+    
     loaded_params = None
     try:
-        with open(json_file_path, 'r') as f:
-            loaded_data = json.load(f)
+        streamlit_json_file = False
+        if isinstance(json_file_path, str):
+            
+            with open(json_file_path, 'r') as f:
+                loaded_data = json.load(f)
+        
+        elif hasattr(json_file_path, 'read'):
+            streamlit_json_file = True
+            loaded_data = json.load(json_file_path)
+
+            # loaded_data = json.load(json_file_path)
 
         # Extract the required variables, converting lists back to numpy arrays
         K1_scaled = np.array(loaded_data["camera_matrix_1"])
@@ -128,6 +139,7 @@ def load_scaled_calibration_parameters(json_file_path):
         # These might be lists/tuples or basic types, no need for np.array conversion
         image_size_resized = loaded_data.get("image_size_resized")
         scale_factor_applied = loaded_data.get("scale_factor_applied")
+        image_size_actual = loaded_data.get("image_size_actual")
 
         loaded_params = {
             "K1": K1_scaled,
@@ -136,10 +148,16 @@ def load_scaled_calibration_parameters(json_file_path):
             "D2": D2_scaled,
             "R": R_scaled,
             "T": T_scaled,
+            "image_size_actual": image_size_actual,
             "image_size_resized": image_size_resized,
             "scale_factor_applied": scale_factor_applied
         }
-        print(f"Successfully loaded scaled calibration parameters from: {json_file_path}")
+
+        if streamlit_json_file:
+            print(f"Successfully loaded scaled calibration parameters from: {json_file_path.name}")
+        else:
+            print(f"Successfully loaded scaled calibration parameters from: {json_file_path}")
+
 
     except FileNotFoundError:
         print(f"Error: The file '{json_file_path}' was not found.")
@@ -355,6 +373,11 @@ def save_point_cloud(point_cloud, output_base_dir):
         outpath = os.path.join(output_base_dir, f'cloud_{timestamp}.ply')
         o3d.io.write_point_cloud(outpath, point_cloud)
         print(f"{bcolors.OKGREEN} Point cloud saved to {outpath} {bcolors.ENDC}")
+        return outpath
     except Exception as e:
         print(f"Error saving point cloud: {e}")
         raise e
+    
+        return None
+
+
