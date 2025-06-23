@@ -13,7 +13,6 @@ from omegaconf import OmegaConf
 import plotly.graph_objects as go
 import albumentations
 
-#print cwd
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 from FoundationStereo.core.utils.utils import InputPadder
 from FoundationStereo.Utils import *
