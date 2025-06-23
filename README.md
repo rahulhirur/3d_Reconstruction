@@ -30,7 +30,7 @@ source 3D_construction_env/bin/activate
 
 Clone the repository:
 ```bash
-git clone --recurse-submodules https://github.com/your-username/3D_construction_env.git
+git clone --recurse-submodules https://github.com/rahulhirur/3d_Reconstruction.git
 cd 3d_Reconstruction
 ```
 
