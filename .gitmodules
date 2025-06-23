@@ -1,0 +1,3 @@
+[submodule "disparity_calculator/FoundationStereo"]
+	path = disparity_calculator/FoundationStereo
+	url = https://github.com/rahulhirur/FoundationStereo
