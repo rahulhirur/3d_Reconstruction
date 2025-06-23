@@ -21,7 +21,6 @@ def main():
 
     calc_disparity(args.img0, args.img1, args.out_dir, args.scale)
 
-
     # save args log file
     log_file_path = os.path.join(args.out_dir, "disparity_args_log.json")
     with open(log_file_path, 'w') as log_file:
@@ -30,4 +29,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
