@@ -4,9 +4,6 @@ PyYAML
 streamlit
 streamlit-tile
 plotly
-torch
-torchvision
-torchaudio
 scikit-image
 omegaconf
 opencv-contrib-python
