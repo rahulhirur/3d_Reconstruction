@@ -34,14 +34,14 @@ def create_output_directory(out_dir):
 def load_configuration():
     
     config_file = f'disparity_calculator/FoundationStereo/cfg.yaml'
-    run_config_file = f'FoundationStereo/run_configuration.yaml'
+    run_config_file = f'disparity_calculator/FoundationStereo/run_configuration.yaml'
 
     cfg = OmegaConf.load(config_file)
     run_cfg = OmegaConf.load(run_config_file)
     return OmegaConf.merge(cfg, run_cfg)
 
 def initialize_model(args):
-    ckpt_dir = "FoundationStereo/pretrained_models/model_best_bp2.pth"
+    ckpt_dir = "disparity_calculator/FoundationStereo/pretrained_models/model_best_bp2.pth"
     logging.info(f"args:\n{args}")
     logging.info(f"Using pretrained model from {ckpt_dir}")
     model = FoundationStereo(args)
@@ -123,6 +123,7 @@ def save_disparity(disp, file_path):
         raise ValueError("Unsupported file extension. Use '.npy' or '.pkl'.")
 
 def vis_disparity(disp, min_val=None, max_val=None, invalid_thres=np.inf, color_map=cv2.COLORMAP_TURBO, cmap=None, other_output={}):
+  
   """
   @disp: np array (H,W)
   @invalid_thres: > thres is invalid
