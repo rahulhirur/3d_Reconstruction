@@ -8,11 +8,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')
 
 from image_rectification.functions import CalibrationLoader, resize_image, generate_rectify_data, rectify, save_images, save_scaled_calibration_parameters, create_calibration_data_report, read_image
 # Ensure set_page_config is the first Streamlit command
-st.set_page_config(
-    page_title="Image Rectificator",
-    page_icon="📷",
-    layout="wide",
-    initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Image Rectificator",page_icon="📷",layout="wide",initial_sidebar_state="collapsed")
 
 # Initialize session state for img1 upload status
 if 'Cam_1_uploaded' not in st.session_state:

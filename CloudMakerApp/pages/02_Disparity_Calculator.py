@@ -40,12 +40,12 @@ if st.button("Compute Disparity"):
         create_output_directory(out_dir)
 
         args = load_configuration()
-        args.left_file = left_file
-        args.right_file = right_file
+        args.left_file = left_file.name
+        args.right_file = right_file.name
         args.scale = scale
         args.hiera = hiera
 
-        img0, img1 = preprocess_images(args.left_file, args.right_file, args.scale)
+        img0, img1 = preprocess_images(left_file, right_file, args.scale)
         model = initialize_model(args)
         disp = compute_disparity(model, img0, img1, args)
 

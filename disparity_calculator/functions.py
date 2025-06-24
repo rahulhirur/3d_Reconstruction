@@ -25,7 +25,7 @@ def initialize_environment():
     set_seed(0)
     torch.autograd.set_grad_enabled(False)
 
-# Create a function tocreate output directory if it doesn't exist
+# Create a function to create output directory if it doesn't exist
 def create_output_directory(out_dir):
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
@@ -65,6 +65,7 @@ def preprocess_images(left_file, right_file, scale):
     
     
     img0 = process_individual_image(left_file, scale)
+
     img1 = process_individual_image(right_file, scale)
 
     return img0, img1
@@ -79,7 +80,42 @@ def process_individual_image(file_name,scale):
 
     return imgx
 
-def compute_disparity(model, img0, img1, args):
+def read_image(file):
+    if isinstance(file, str):
+        return cv2.imread(file)
+    elif hasattr(file, 'read'):
+        return cv2.imdecode(np.frombuffer(file.read(), np.uint8), cv2.IMREAD_COLOR)
+    else:
+        return None
+
+def prepare_images_for_model(img0, img1):
+    """
+    Prepares images for model input by converting them to tensors and padding them.
+
+    Args:
+        img0 (numpy.ndarray): First image.
+        img1 (numpy.ndarray): Second image.
+
+    Returns:
+        tuple: Padded and converted images (img0, img1).
+    """
+    if torch.cuda.is_available():
+        img0 = torch.as_tensor(img0).cuda().float()[None].permute(0, 3, 1, 2)
+        img1 = torch.as_tensor(img1).cuda().float()[None].permute(0, 3, 1, 2)
+    else:
+        img0 = torch.as_tensor(img0).float()[None].permute(0, 3, 1, 2)
+        img1 = torch.as_tensor(img1).float()[None].permute(0, 3, 1, 2)
+    
+    return img0, img1
+
+def compute_disparity(model, img0, img1, args, unpad=True):
+
+    H,W = img0.shape[:2]
+
+    img0, img1 = prepare_images_for_model(img0, img1)
+
+    padder = InputPadder(img0.shape, divis_by=32, force_square=False)
+    img0, img1 = padder.pad(img0, img1)
 
     if torch.cuda.is_available():
         with torch.cuda.amp.autocast(True):
@@ -89,18 +125,21 @@ def compute_disparity(model, img0, img1, args):
                 disp = model.run_hierachical(img0, img1, iters=args.valid_iters, test_mode=True, small_ratio=0.5)
     else:
         if not args.hiera:
+
             disp = model.forward(img0, img1, iters=args.valid_iters, test_mode=True)
         else:
-            disp = model.run_hierachical(img0, img1, iters=args.valid_iters, test_mode=True, small_ratio=0.5)
-    return disp
 
-def read_image(file):
-    if isinstance(file, str):
-        return cv2.imread(file)
-    elif hasattr(file, 'read'):
-        return cv2.imdecode(np.frombuffer(file.read(), np.uint8), cv2.IMREAD_COLOR)
+            disp = model.run_hierachical(img0, img1, iters=args.valid_iters, test_mode=True, small_ratio=0.5)
+    
+    if unpad:
+
+        disp = padder.unpad(disp.float())
+        return disp.data.cpu().numpy().reshape(H,W)
+
     else:
-        return None
+
+        disp = padder.unpad(disp.float()).cpu().numpy()
+        return disp
 
 def save_disparity(disp, file_path):
 
