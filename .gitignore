@@ -10,3 +10,7 @@ input/
 output/
 # Ignore the GroundTruth folder
 GroundTruth/
+# Ignore testFile.py
+testFile.py
+# Ignore testFile2.py
+testFile2.py

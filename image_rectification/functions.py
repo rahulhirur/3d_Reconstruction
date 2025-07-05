@@ -14,6 +14,10 @@ def read_image(file):
     else:
         return None
 
+#Create a function to transpose the image size to (width, height)
+def transpose_image_size(img_size):
+    return (img_size[1], img_size[0])
+
 def is_colab():
   return 'google.colab' in sys.modules
 
@@ -87,10 +91,10 @@ class YamlCameraCalibration:
 
         return R, T
 
-    def get_all_calibration(self, scale_factor=1.0):
+    def get_all_calibration(self, cam1_idx=0, cam2_idx=1, scale_factor=1.0):
 
-        K1, D1 = self.load_camera_calibration(0, scale_factor)
-        K2, D2 = self.load_camera_calibration(1, scale_factor)
+        K1, D1 = self.load_camera_calibration(cam1_idx, scale_factor)
+        K2, D2 = self.load_camera_calibration(cam2_idx, scale_factor)
         R, T = self.load_stereo_calibration() # R and T are not scaled
         return K1, D1, K2, D2, R, T
 
@@ -99,9 +103,7 @@ class YamlCameraCalibration:
 
 class JsonCameraCalibration:
     def __init__(self, json_file_path):
-
         try:
-
             if isinstance(json_file_path, str):
                 
                 with open(json_file_path, 'r') as f:
@@ -178,13 +180,46 @@ class JsonCameraCalibration:
 
         return R, T
 
-    def get_all_calibration(self, scale_factor=1.0):
+    def get_all_calibration(self, cam1_idx=0, cam2_idx=1, scale_factor=1.0):
 
-        K1, D1 = self.load_camera_calibration(0, scale_factor)
-        K2, D2 = self.load_camera_calibration(1, scale_factor)
-        R, T = self.load_stereo_calibration(camera_index=1)
+        K1, D1 = self.load_camera_calibration(cam1_idx, scale_factor)
+        K2, D2 = self.load_camera_calibration(cam2_idx, scale_factor)
+        R, T = self.load_stereo_calibration(camera_index=cam2_idx)
 
         return K1, D1, K2, D2, R, T
+
+    def get_num_cameras(self):
+        """
+        Returns the number of cameras in the calibration file.
+        This assumes the JSON structure has a "calibration" key with a "cameras" list.
+        """
+        try:
+            return len(self.calibration_data["calibration"]["cameras"])
+        except KeyError:
+            raise KeyError("Missing 'calibration' or 'cameras' key in JSON structure.")
+
+    # get the reference camera index ( refrence camera is the camera whose rotation and translation vector is zero)
+    def get_reference_camera_index(self):
+        """
+        Returns the index of the reference camera (the camera with zero rotation and translation).
+        This assumes the JSON structure has a "calibration" key with a "cameras" list.
+        """
+        try:
+            cameras = self.calibration_data["calibration"]["cameras"]
+            for idx, camera in enumerate(cameras):
+                transform = camera.get("transform", {})
+                rotation = transform.get("rotation", {})
+                translation = transform.get("translation", {})
+                if (rotation.get("rx", 0) == 0 and
+                    rotation.get("ry", 0) == 0 and
+                    rotation.get("rz", 0) == 0 and
+                    translation.get("x", 0) == 0 and
+                    translation.get("y", 0) == 0 and
+                    translation.get("z", 0) == 0):
+                    return idx
+            return None # No reference camera found
+        except KeyError:
+            raise KeyError("Missing 'calibration' or 'cameras' key in JSON structure.")
 
     def close(self):
         pass # No explicit resource to release for json.load
@@ -192,7 +227,7 @@ class JsonCameraCalibration:
 class CalibrationLoader:
     def __init__(self, file_path):
         if isinstance(file_path, str):
-
+            
             ext = os.path.splitext(file_path)[1].lower()
             self.file_path = file_path
 
@@ -210,10 +245,10 @@ class CalibrationLoader:
         else:
             raise ValueError(f"Unsupported file extension: {ext}")
 
-    def get_all_calibration(self, scale_factor, dict_format=False):
+    def get_all_calibration(self, cam1_idx, cam2_idx, scale_factor, dict_format=False):
 
         if dict_format:
-            K1, D1, K2, D2, R, T = self.loader.get_all_calibration(scale_factor)
+            K1, D1, K2, D2, R, T = self.loader.get_all_calibration(cam1_idx, cam2_idx, scale_factor)
             return {
                 "K1": K1,
                 "D1": D1,
@@ -223,7 +258,7 @@ class CalibrationLoader:
                 "T": T
             }
         else:
-            return self.loader.get_all_calibration(scale_factor)
+            return self.loader.get_all_calibration(cam1_idx, cam2_idx,scale_factor)
 
     def is_valid(self):
         """
@@ -231,24 +266,50 @@ class CalibrationLoader:
         Returns True if successful, False otherwise.
         """
         try:
-            self.loader.get_all_calibration(1.0)  # Try loading with scale factor 1.0
+            self.loader.get_all_calibration()  # Try loading with scale factor 1.0
             return True
         except Exception as e:
             print(f"Error loading calibration data: {e}")
             return False
     
+    #get the number of cameras in the calibration file
+    def get_num_cameras(self):
+        """
+        Returns the number of cameras in the calibration file.
+        This is a placeholder method and should be implemented in subclasses.
+        """
+        if hasattr(self.loader, 'get_num_cameras'):
+            return self.loader.get_num_cameras()
+        else:
+            raise NotImplementedError("This method should be implemented in the loader class.")
+    # get the reference camera index ( refrence camera is the camera whose rotation and translation vector is zero)
+    def get_reference_camera_index(self):
+        """
+        Returns the index of the reference camera (the camera with zero rotation and translation).
+        This is a placeholder method and should be implemented in subclasses.
+        """
+        if hasattr(self.loader, 'get_reference_camera_index'):
+            return self.loader.get_reference_camera_index()
+        else:
+            raise NotImplementedError("This method should be implemented in the loader class.")
+
     def close(self):
         if hasattr(self.loader, 'close'):
             self.loader.close()
-
 # Get Rectification map
-def generate_rectify_data(M1, M2, R, T, d1, d2, size):
-    R1, R2, P1, P2, Q, valid_roi1, valid_roi2 = cv2.stereoRectify(M1, d1, M2, d2, size, R, T, alpha=0, flags=cv2.CALIB_ZERO_TANGENT_DIST)
-    map1x, map1y = cv2.initUndistortRectifyMap(M1, d1, R1, P1, size, cv2.CV_32FC1)
-    map2x, map2y = cv2.initUndistortRectifyMap(M2, d2, R2, P2, size, cv2.CV_32FC1)
+def generate_rectify_data(K1, K2, R, T, d1, d2, size, flag=cv2.CALIB_ZERO_TANGENT_DIST):
+
+
+    print(f"Generating rectification maps for images of size: {size}")
+    R1, R2, P1, P2, Q, valid_roi1, valid_roi2 = cv2.stereoRectify(K1, d1, K2, d2, size, R, T, alpha=0, flags=flag)
+    print(f"Rectification matrices:\nR1: {R1}\nR2: {R2}\nP1: {P1}\nP2: {P2}\nQ: {Q}")
+    map1x, map1y = cv2.initUndistortRectifyMap(K1, d1, R1, P1, size, cv2.CV_32FC1)
+    map2x, map2y = cv2.initUndistortRectifyMap(K2, d2, R2, P2, size, cv2.CV_32FC1)
+
     return map1x, map1y, map2x, map2y, P1, P2, Q
 
 def rectify(img, map_x, map_y):
+    print(f"Rectifying image with shape: {img.shape}")
     return cv2.remap(img, map_x, map_y, interpolation=cv2.INTER_NEAREST, borderMode=cv2.BORDER_CONSTANT)
 
 def show_stereo_images(img_1, img_2):
@@ -273,7 +334,8 @@ def resize_image(image, scale_factor):
 
     # Get original dimensions
     original_height, original_width = image.shape[:2]
-
+    print(image.shape[:2])
+    
     # Calculate new dimensions
     new_width = int(original_width * scale_factor)
     new_height = int(original_height * scale_factor)
@@ -504,3 +566,19 @@ def create_calibration_data_report(K1_scaled, D1_scaled, K2_scaled, D2_scaled, R
 
     print(f"calibrationData updated and saved to '{output_dir}'")
 
+def suggest_next_folder_name(base_path, prefix="batch_"):
+    """
+    Suggests the next folder name based on existing folders in the directory.
+
+    Args:
+        base_path (str): Full path to the directory containing folders.
+        prefix (str): Prefix for the folder names. Defaults to "batch_".
+
+    Returns:
+        str: Full path of the suggested next folder name.
+    """
+    existing_folders = [name for name in os.listdir(base_path) if name.startswith(prefix)]
+    existing_numbers = [int(name[len(prefix):]) for name in existing_folders if name[len(prefix):].isdigit()]
+
+    next_number = max(existing_numbers, default=0) + 1
+    return os.path.join(base_path, f"{prefix}{next_number}")

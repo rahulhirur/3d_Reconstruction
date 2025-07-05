@@ -6,7 +6,7 @@ import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-from image_rectification.functions import CalibrationLoader, resize_image, generate_rectify_data, rectify, save_images, save_scaled_calibration_parameters, create_calibration_data_report, read_image
+from image_rectification.functions import CalibrationLoader, resize_image, generate_rectify_data, rectify, save_images, save_scaled_calibration_parameters, create_calibration_data_report, read_image, suggest_next_folder_name, transpose_image_size
 # Ensure set_page_config is the first Streamlit command
 st.set_page_config(page_title="Image Rectificator",page_icon="📷",layout="wide",initial_sidebar_state="collapsed")
 
@@ -39,8 +39,20 @@ if 'rectify_button_state' not in st.session_state:
 if 'save_rectified_button_state' not in st.session_state:
     st.session_state.save_rectified_button_state = False
 
+if 'save_rectified_button_activate_state' not in st.session_state:
+    st.session_state.save_rectified_button_activate_state = False
+
 if 'visualize_camera_position_button_state' not in st.session_state:
     st.session_state.visualize_camera_position_button_state = False
+
+if 'visualize_camera_position_button_activate_state' not in st.session_state:
+    st.session_state.visualize_camera_position_button_activate_state = False
+
+if 'visualize_rectification_images_button_state' not in st.session_state:
+    st.session_state.visualize_rectification_images_button_state = False
+
+if 'visualize_rectification_images_button_activate_state' not in st.session_state:
+    st.session_state.visualize_rectification_images_button_activate_state = False
 
 @st.cache_data
 def streamlit_image_loader(img_path, seesion_id="Cam_1_uploaded"):
@@ -62,6 +74,7 @@ def streamlit_image_loader(img_path, seesion_id="Cam_1_uploaded"):
 
 @st.cache_data
 def streamlit_calibration_loader(calib_file):
+    
     if calib_file:
         
         calib_yaml = CalibrationLoader(calib_file)
@@ -276,85 +289,141 @@ calib_file = st.file_uploader("Upload Calibration JSON File", type="json")
 
 # Load calibration data
 calib_yaml = streamlit_calibration_loader(calib_file)
-
 if calib_yaml is not None:
+    # Retrieve the number of cameras and reference camera index
+    num_cameras = calib_yaml.get_num_cameras()
+    ref_camera_index = calib_yaml.get_reference_camera_index()
+
+    # Display the number of cameras and reference camera index in one line
+    st.info(f"*Number of cameras:* **{num_cameras}** | *Reference camera index:* **{ref_camera_index}**")
+
+    # Handle calibration file upload status
     if st.session_state.calib_file_uploaded == "Uploaded":
         st.session_state.calib_file_uploaded = "Not uploaded"
         st.toast("Calibration file loaded successfully!", icon="✅")
     elif st.session_state.calib_file_uploaded == "Failure":
         st.error("Invalid calibration file. Please upload a valid JSON file.")
 
+    # Allow selection of camera indices regardless of the number of cameras
+    col_cam1, col_cam2 = st.columns(2)
+
+    # Dropdown for selecting Camera 1 index
+    with col_cam1:
+        cam1_index = st.selectbox("Select Camera 1 Index", options=list(range(num_cameras)), index=ref_camera_index)
+
+    # Dropdown for selecting Camera 2 index
+    with col_cam2:
+        cam2_index = st.selectbox("Select Camera 2 Index", options=list(range(num_cameras)), index=(ref_camera_index + 1) % num_cameras)
+
+    # Update calibration parameters based on selected camera indices
+    # st.session_state.calibration_param = calib_yaml.get_calibration_for_cameras_by_index(cam1_index, cam2_index, scale_factor=1.0, dict_format=True)
+
+
 # Output directory
-output_base_dir = st.text_input("**Output Directory**", value="output/batch_")
-
-
+output_base_dir = st.text_input("**Output Directory**", value=suggest_next_folder_name("output", "batch_"))
 
 # Adjusted layout for scale factor and camera perspective toggle
-colId1 = st.columns([9, 1], vertical_alignment="center")
+colId1 = st.columns([6,2,1], vertical_alignment="top")
 
 with colId1[0]:
     scale_factor = st.slider("**Scale Factor**", min_value=0.0, max_value=1.0, value=0.25, step=0.05)
 
+#add a selection box for flag for cv2.stereoRectify flags and set one of them as default
 with colId1[1]:
+
+    stereoRectify_flags_labels = ["cv2.CALIB_ZERO_TANGENT_DIST", "cv2.CALIB_SAME_FOCAL_LENGTH", "cv2.CALIB_ZERO_DISPARITY"]
+    stereoRectify_flags = [8, 512,1024]
+
+    selected_stereoRectify_flag = st.selectbox(
+        "**Rectification Flags**",
+        options=stereoRectify_flags,
+        index=0,
+        format_func=lambda x: stereoRectify_flags_labels[stereoRectify_flags.index(x)]
+    )
+    st.write(selected_stereoRectify_flag)
+with colId1[2]:
     cam1_perspective = st.toggle("**Use Camera 1 Perspective**", value=True)
 
 # Rearranged buttons and toggle horizontally for better layout
-colId2 = st.columns([1.5, 1.5, 1.5, 7], vertical_alignment="center")
+colId2 = st.columns([1.5, 1.5, 1.5, 2, 6], vertical_alignment="center")
 
 with colId2[0]:
-    if st.button("Rectify Images", key="rectify_button", use_container_width=True):
+    rectify_disabled = not image1_path or not image2_path or not calib_file
+    if st.button("Rectify Images", key="rectify_button", use_container_width=True, disabled= rectify_disabled):
         st.session_state.rectify_button_state = True
+        st.session_state.visualize_camera_position_button_activate_state = True
+        st.session_state.visualize_rectification_images_button_activate_state = True
+        st.session_state.save_rectified_button_activate_state = True
+
 
 with colId2[1]:
-    save_disabled = not st.session_state.rectify_button_state
-    if st.button("Save Rectified Images", key="save_rectified_button", use_container_width=True, disabled=save_disabled):
+    
+    if st.button("Save Rectified Images", key="save_rectified_button", use_container_width=True, disabled=not st.session_state.save_rectified_button_activate_state):
         st.session_state.save_rectified_button_state = True
+        
 
 with colId2[2]:
-    visualize_disabled = not st.session_state.rectify_button_state
+
+    visualize_disabled = not st.session_state.visualize_camera_position_button_activate_state
+
     if st.button("Visualize Camera Position", key="visualize_camera_position_button", use_container_width=True, disabled=visualize_disabled):
         st.session_state.visualize_camera_position_button_state = True
 
-if st.session_state.rectify_button_state:
+with colId2[3]:
+    visualize_rectification_images = not st.session_state.visualize_rectification_images_button_activate_state
 
-    st.session_state.calibration_param = calib_yaml.get_all_calibration(scale_factor, dict_format=True)
+    if st.button("Visualize Rectification Images", key="visualize_rectification_images_button", use_container_width=True, disabled=visualize_rectification_images):
+        st.session_state.visualize_rectification_images_button_state = True
+        
+if st.session_state.rectify_button_state:
+    
     if not image1_path or not image2_path or not calib_file:
         st.error("Please upload all required files.")
+
     else:
+        
+        st.session_state.calibration_param = calib_yaml.get_all_calibration(cam1_index, cam2_index, scale_factor, dict_format=True)
+        
         img_1_resized, img_size_resized = resize_image(img_1, scale_factor)
         img_2_resized, _ = resize_image(img_2, scale_factor)  # Use the size from the first image
-
+        
         # Update img_size to the new size for subsequent steps like rectification
-        st.session_state.img_size = img_size_resized  
-
-        # Get scaled calibration parameters for the new image size
-        # K1_scaled, D1_scaled, K2_scaled, D2_scaled, R_scaled, T_scaled = calib_yaml.get_all_calibration(scale_factor, dict_format=True)
+        st.session_state.img_size = transpose_image_size(img_size_resized)  
         
         if cam1_perspective:
+            print(selected_stereoRectify_flag)
             # Generate rectification maps using the scaled parameters and new image size
-            map1x, map1y, map2x, map2y, P1, P2, Q = generate_rectify_data(st.session_state.calibration_param["K1"], st.session_state.calibration_param["K2"], st.session_state.calibration_param["R"], st.session_state.calibration_param["T"], st.session_state.calibration_param["D1"], st.session_state.calibration_param["D2"], st.session_state.img_size)
+            map1x, map1y, map2x, map2y, P1, P2, Q = generate_rectify_data(st.session_state.calibration_param["K1"], st.session_state.calibration_param["K2"], st.session_state.calibration_param["R"], st.session_state.calibration_param["T"], st.session_state.calibration_param["D1"], st.session_state.calibration_param["D2"], st.session_state.img_size, selected_stereoRectify_flag)
 
+            #shape of map1x and map1y
+            st.write(f"Shape of map1x: {map1x.shape}, map1y: {map1y.shape}")
+            st.write(f"Shape of map2x: {map2x.shape}, map2y: {map2y.shape}")
+            st.write("map1x")
+            st.write(map1x)
             # Rectify the resized images
             st.session_state.rectified_img1 = rectify(img_1_resized, map1x, map1y)
             st.session_state.rectified_img2 = rectify(img_2_resized, map2x, map2y)
             
+        
         else:
 
             R_2_to_1 = st.session_state.calibration_param["R"].T
             T_2_to_1 = -st.session_state.calibration_param["R"].T @ st.session_state.calibration_param["T"]
             # Generate rectify data with right camera as reference
-            map_x_new_1, map_y_new_1, map_x_new_2, map_y_new_2, P1_new, P2_new, Q_new = generate_rectify_data(st.session_state.calibration_param["K2"], st.session_state.calibration_param["K1"], R_2_to_1, T_2_to_1, st.session_state.calibration_param["D2"], st.session_state.calibration_param["D1"], st.session_state.img_size)
+            map_x_new_1, map_y_new_1, map_x_new_2, map_y_new_2, P1_new, P2_new, Q_new = generate_rectify_data(st.session_state.calibration_param["K2"], st.session_state.calibration_param["K1"], R_2_to_1, T_2_to_1, st.session_state.calibration_param["D2"], st.session_state.calibration_param["D1"], st.session_state.img_size, selected_stereoRectify_flag)
 
             st.session_state.rectified_img2 = rectify(img_2_resized, map_x_new_1, map_y_new_1)
             st.session_state.rectified_img1 = rectify(img_1_resized, map_x_new_2, map_y_new_2)
 
             st.session_state.calibration_param["R"] = R_2_to_1
             st.session_state.calibration_param["T"] = T_2_to_1
-
+        
+        st.session_state.rectify_button_state = False  # Reset the button state after rectification
         
         st.success("Rectification completed successfully!")
 
 if st.session_state.save_rectified_button_state:
+
     if not image1_path or not image2_path or not calib_file:
         st.error("Please upload all required files.")
     else:
@@ -364,16 +433,19 @@ if st.session_state.save_rectified_button_state:
 
         # Save scaled calibration parameters
         save_scaled_calibration_parameters(st.session_state.calibration_param["K1"], st.session_state.calibration_param["D1"], st.session_state.calibration_param["K2"], st.session_state.calibration_param["D2"], st.session_state.calibration_param["R"], st.session_state.calibration_param["T"], st.session_state.img_size, scale_factor, output_base_dir)
-
         # Create and save calibration data report
         
         st.write(f"Current working directory: {os.getcwd()}")
         create_calibration_data_report(st.session_state.calibration_param["K1"], st.session_state.calibration_param["D1"], st.session_state.calibration_param["K2"], st.session_state.calibration_param["D2"], st.session_state.calibration_param["R"], st.session_state.calibration_param["T"], st.session_state.img_size, scale_factor, output_base_dir)
 
         st.success("Rectified images and calibration data saved successfully!")
+        st.session_state.save_rectified_button_state = False  # Reset the button state after saving
+        st.session_state.save_rectified_button_activate_state = False
+        st.rerun()
 
 if st.session_state.visualize_camera_position_button_state:
     # Check if all required files are uploaded
+
     if not image1_path or not image2_path or not calib_file:
         st.error("Please upload all required files.")
     else:
@@ -381,3 +453,24 @@ if st.session_state.visualize_camera_position_button_state:
             st.error("Calibration parameters are not available. Please run rectification first.")
         else:
             visualize_camera_position()
+            st.session_state.visualize_camera_position_button_state = False
+
+
+if st.session_state.visualize_rectification_images_button_state:
+    # Check if all required files are uploaded
+
+    if not image1_path or not image2_path or not calib_file:
+        st.error("Please upload all required files.")
+    else:
+        if st.session_state.calibration_param is None:
+            st.error("Calibration parameters are not available. Please run rectification first.")
+        else:
+            if st.session_state.rectified_img1 is not None and st.session_state.rectified_img2 is not None:
+                col_img1, col_img2 = st.columns(2)
+                with col_img1:
+                    st.image(st.session_state.rectified_img1, caption="Rectified Image 1", use_container_width=True)
+                with col_img2:
+                    st.image(st.session_state.rectified_img2, caption="Rectified Image 2", use_container_width=True)
+            else:
+                st.error("Rectified images are not available. Please run rectification first.")
+            st.session_state.visualize_rectification_images_button_state = False
