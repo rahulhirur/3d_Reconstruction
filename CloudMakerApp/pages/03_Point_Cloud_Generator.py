@@ -10,8 +10,7 @@ import json
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 # from ply_generation.pcd_generation_utils import generate_pcd
-from ply_generation.functions import load_scaled_calibration_parameters, vis_disparity, resize_2D_data, disparity_to_point_cloud, save_point_cloud, generate_rectify_data
-
+from ply_generation.functions import load_scaled_calibration_parameters, vis_disparity, resize_2D_data, disparity_to_point_cloud, save_point_cloud, generate_rectify_data, load_rectification_artifacts
 
 #create a buutton to set the threshold value
 if 'set_threshold_clicked' not in st.session_state:
@@ -21,6 +20,9 @@ if 'set_threshold_clicked' not in st.session_state:
 if 'threshold_value' not in st.session_state:
     st.session_state['threshold_value'] = 480
 
+    # Add session state for disabling the resize disparity toggle
+    if 'disable_resize_disparity' not in st.session_state:
+        st.session_state['disable_resize_disparity'] = False
 
 def visualize_point_cloud(pcd):
     """
@@ -72,9 +74,20 @@ if disp_path:
 calib_file = colId1[1].file_uploader("Upload Calibration File", type="json")
 
 if calib_file:
-    calib_parameters = load_scaled_calibration_parameters(calib_file)
-    img_size= calib_parameters["image_size_actual"]
+    # Load the JSON file
+    calib_data = json.load(calib_file)
 
+    # Check if P1 and P2 are available in the JSON file
+    if "P1" in calib_data:
+
+        resize_disparity = False
+        calib_parameters = load_rectification_artifacts(calib_file)
+        st.session_state['disable_resize_disparity'] = True
+
+    else:
+        calib_parameters = load_scaled_calibration_parameters(calib_file)
+        img_size= calib_parameters["image_size_actual"]
+        st.session_state['disable_resize_disparity'] = False
 
 # Additional parameters
 output_base_dir = st.text_input("**Output Directory**", value="output/point_cloud")
@@ -83,8 +96,8 @@ coldId2 = st.columns([9,1], vertical_alignment="center")
 
 threshold_value = coldId2[0].slider("**Threshold Value**", min_value=0, max_value=1000, value=st.session_state['threshold_value'], step=10)
 
-
 if coldId2[1].button("Set Threshold Value", type="primary"):
+
     st.session_state['set_threshold_clicked'] = True
     st.session_state['threshold_value'] = threshold_value
 
@@ -93,16 +106,18 @@ if coldId2[1].button("Set Threshold Value", type="primary"):
     else:
         st.error("Please upload a disparity file first.")
         
-
 colId3 = st.columns(5)
 
+resize_disparity = colId3[0].toggle("**Resize Disparity**", disabled= st.session_state['disable_resize_disparity'])
 
-resize_disparity = colId3[0].toggle("**Resize Disparity**", value=True)
 visualize_disparity = colId3[1].toggle("**Visualize Disparity**", value=False)
+
 gen_cloud = colId3[2].button("Generate Point Cloud")
 
-if visualize_disparity:    
+if visualize_disparity:
+
     st.markdown("**Disparity Map Visualization**")
+
     if disp_path:
         
         disp_temp = disp.copy()
@@ -113,22 +128,26 @@ if visualize_disparity:
 
 
 if resize_disparity:
+
     if disp_path and calib_file:
 
         scale_factor = img_size[1] / disp.shape[1]
         
         if scale_factor != (1/calib_parameters["scale_factor_applied"]):
+
             st.error("The scale factor of the disparity does not match the calibration parameters. Please check your inputs.")
         else:
             if scale_factor != 1:
                 disp = resize_2D_data(disp, scale_factor, interpolation_order='cubic')
-
         
 if gen_cloud:
     if disp_path and calib_file:
         try:
             disp[disp < st.session_state['threshold_value']] = 0
+
+
             map_x_l, map_y_l, map_x_r, map_y_r, P1, P2, Q = generate_rectify_data(calib_parameters["K1"], calib_parameters["K2"], calib_parameters["R"], calib_parameters["T"], calib_parameters["D1"], calib_parameters["D2"], disp.shape[:2])
+            
 
             point_cloud = disparity_to_point_cloud(P1, P2, disp)
             cl, ind = point_cloud.remove_statistical_outlier(nb_neighbors=20, std_ratio=0.5)

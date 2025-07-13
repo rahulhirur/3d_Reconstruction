@@ -114,6 +114,8 @@ def load_scaled_calibration_parameters(json_file_path):
                       'R_scaled', 'T_scaled', 'image_size_resized', 'scale_factor_applied'.
     """
     
+    
+
     loaded_params = None
     try:
         streamlit_json_file = False
@@ -125,7 +127,6 @@ def load_scaled_calibration_parameters(json_file_path):
         elif hasattr(json_file_path, 'read'):
             streamlit_json_file = True
             loaded_data = json.load(json_file_path)
-
             # loaded_data = json.load(json_file_path)
 
         # Extract the required variables, converting lists back to numpy arrays
@@ -380,4 +381,28 @@ def save_point_cloud(point_cloud, output_base_dir):
     
         return None
 
+def load_rectification_artifacts(json_file_path):
+    """
+    Load rectification artifacts (P1 and P2 matrices) from a JSON file.
 
+    Args:
+        json_file_path (str): Path to the JSON file containing rectification artifacts.
+
+    Returns:
+        tuple: A tuple containing P1 and P2 as numpy arrays.
+    """
+    try:
+        with open(json_file_path, "r") as f:
+            artifacts = json.load(f)
+        P1 = np.array(artifacts["P1"])
+        P2 = np.array(artifacts["P2"])
+        return P1, P2
+    except FileNotFoundError:
+        print(f"Error: The file '{json_file_path}' was not found.")
+    except json.JSONDecodeError:
+        print(f"Error: Could not decode JSON from the file '{json_file_path}'. Check file integrity.")
+    except KeyError as e:
+        print(f"Error: Missing expected key '{e}' in the JSON data. File format might be incorrect.")
+    except Exception as e:
+        print(f"An unexpected error occurred while reading the JSON file: {e}")
+        return None, None
