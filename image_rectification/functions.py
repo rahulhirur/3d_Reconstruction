@@ -297,16 +297,43 @@ class CalibrationLoader:
         if hasattr(self.loader, 'close'):
             self.loader.close()
 # Get Rectification map
-def generate_rectify_data(K1, K2, R, T, d1, d2, size, flag=cv2.CALIB_ZERO_TANGENT_DIST):
+def generate_rectify_data(K1, K2, R, T, d1, d2, size, flag=cv2.CALIB_ZERO_TANGENT_DIST, rectified_img_size=None):
 
+    if rectified_img_size is None:
+        rectified_img_size = size
 
     print(f"Generating rectification maps for images of size: {size}")
-    R1, R2, P1, P2, Q, valid_roi1, valid_roi2 = cv2.stereoRectify(K1, d1, K2, d2, size, R, T, alpha=0, flags=flag)
+    R1, R2, P1, P2, Q, valid_roi1, valid_roi2 = cv2.stereoRectify(K1, d1, K2, d2, size, R, T, alpha=0, flags=flag, newImageSize= rectified_img_size)
+    # shape of the rectification matrices
+    print(f"R1 shape: {R1.shape}, R2 shape: {R2.shape}, P1 shape: {P1.shape}, P2 shape: {P2.shape}, Q shape: {Q.shape}, valid_roi1: {valid_roi1}, valid_roi2: {valid_roi2}")
+    # print the rectification matrices
     print(f"Rectification matrices:\nR1: {R1}\nR2: {R2}\nP1: {P1}\nP2: {P2}\nQ: {Q}")
+
+    # Get the area used for rectification in terms of percentage comapred to the original image size
+    valid_roi1_area = (valid_roi1[2] -valid_roi1[0] )* (valid_roi1[3] -valid_roi1[1])
+    valid_roi2_area = (valid_roi2[2] -valid_roi2[0] )* (valid_roi2[3] -valid_roi2[1])
+    total_area = size[0] * size[1]
+
+    valid_roi1_percentage = (valid_roi1_area / total_area) * 100
+    valid_roi2_percentage = (valid_roi2_area / total_area) * 100
+
+    #Get the prinicipal point of the rectified images
+    principal_point1 = (P1[0, 2], P1[1, 2])
+    principal_point2 = (P2[0, 2], P2[1, 2])
+
+
+    #create a dictinaory to hold this evaluation data
+    evaluation_data = {
+        "roi1_percentage": valid_roi1_percentage,
+        "roi2_percentage": valid_roi2_percentage,
+        "principal_point1": principal_point1,
+        "principal_point2": principal_point2
+    }
+
     map1x, map1y = cv2.initUndistortRectifyMap(K1, d1, R1, P1, size, cv2.CV_32FC1)
     map2x, map2y = cv2.initUndistortRectifyMap(K2, d2, R2, P2, size, cv2.CV_32FC1)
 
-    return map1x, map1y, map2x, map2y, P1, P2, Q
+    return map1x, map1y, map2x, map2y, P1, P2, Q, evaluation_data
 
 def rectify(img, map_x, map_y):
     print(f"Rectifying image with shape: {img.shape}")
@@ -582,3 +609,27 @@ def suggest_next_folder_name(base_path, prefix="batch_"):
 
     next_number = max(existing_numbers, default=0) + 1
     return os.path.join(base_path, f"{prefix}{next_number}")
+
+def save_rectification_artifacts(P1, P2, output_dir):
+    """
+    Save rectification artifacts (P1 and P2 matrices) to a JSON file.
+
+    Args:
+        P1 (np.ndarray): Projection matrix for Camera 1.
+        P2 (np.ndarray): Projection matrix for Camera 2.
+        output_dir (str): Directory to save the JSON file.
+
+    Returns:
+        None
+    """
+
+    artifacts = {
+        "P1": P1.tolist(),
+        "P2": P2.tolist()
+    }
+
+    os.makedirs(output_dir, exist_ok=True)
+    artifact_path = os.path.join(output_dir, "rectification_artifacts.json")
+
+    with open(artifact_path, "w") as f:
+        json.dump(artifacts, f, indent=4)

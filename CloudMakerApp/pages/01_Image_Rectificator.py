@@ -6,7 +6,9 @@ import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-from image_rectification.functions import CalibrationLoader, resize_image, generate_rectify_data, rectify, save_images, save_scaled_calibration_parameters, create_calibration_data_report, read_image, suggest_next_folder_name, transpose_image_size
+from image_rectification.functions import CalibrationLoader, resize_image, generate_rectify_data, rectify, save_images, save_scaled_calibration_parameters, create_calibration_data_report, read_image, suggest_next_folder_name, transpose_image_size, save_rectification_artifacts
+import json
+
 # Ensure set_page_config is the first Streamlit command
 st.set_page_config(page_title="Image Rectificator",page_icon="📷",layout="wide",initial_sidebar_state="collapsed")
 
@@ -29,8 +31,17 @@ if 'rectified_img2' not in st.session_state:
 if "img_size" not in st.session_state:
     st.session_state.img_size = None
 
+if "img1_size" not in st.session_state:
+    st.session_state.img1_size = None
+
 if "calibration_param" not in st.session_state:
     st.session_state.calibration_param = None
+
+if "P1" not in st.session_state:
+    st.session_state.P1 = None
+
+if "P2" not in st.session_state:
+    st.session_state.P2 = None
 
 # Initialize button states in session state
 if 'rectify_button_state' not in st.session_state:
@@ -253,42 +264,152 @@ def visualize_camera_position():
 
     st.plotly_chart(fig, use_container_width=True)
 
+def get_images_from_folder(folder_path):
+    """
+    Retrieve a list of PNG images from the specified folder.
+
+    Args:
+        folder_path (str): Path to the folder.
+
+    Returns:
+        list: List of PNG image file paths.
+    """
+    if folder_path:
+        try:
+
+            file_names = [f for f in os.listdir(folder_path) if f.lower().endswith(".png")]
+            #sort the file names
+            file_names.sort()  # Sort the file names alphabetically
+            
+            folder_file_paths = [os.path.join(folder_path, f) for f in file_names]
+            return folder_file_paths, file_names
+        except Exception as e:
+            st.error(f"Error reading folder: {e}")
+            return [],[]
+    return [],[]
+
+def rectification_quality_analysis(img_size, evaluation_data):
+
+    st.info(f"Camera 1: **{evaluation_data['roi1_percentage']:.2f}%** | Camera 2: **{evaluation_data['roi2_percentage']:.2f}%** of the image area is used in rectification.")
+        
+    
+    img_width, img_height = img_size
+    
+    pp1_x, pp1_y = evaluation_data["principal_point1"]
+    pp2_x, pp2_y = evaluation_data["principal_point2"]
+
+    pp1_status = "inside" if 0 <= pp1_x < img_width and 0 <= pp1_y < img_height else "outside"
+    pp2_status = "inside" if 0 <= pp2_x < img_width and 0 <= pp2_y < img_height else "outside"
+
+    if pp1_status == "inside":
+        st.info(f"Cam 1 Principal Point: ({pp1_x:.2f}, {pp1_y:.2f}) is {pp1_status}. Image Size: {img_width}x{img_height}.")
+    else:
+        st.warning(f"Cam 1 Principal Point: ({pp1_x:.2f}, {pp1_y:.2f}) is {pp1_status}. Image Size: {img_width}x{img_height}.")
+
+    if pp2_status == "inside":
+        st.info(f"Cam 2 Principal Point: ({pp2_x:.2f}, {pp2_y:.2f}) is {pp2_status}. Image Size: {img_width}x{img_height}.")
+    else:
+        st.warning(f"Cam 2 Principal Point: ({pp2_x:.2f}, {pp2_y:.2f}) is {pp2_status}. Image Size: {img_width}x{img_height}.")
+    
+    # visualize the principal points on the rectangle of size img_size
+    figx = go.Figure()
+    
+    figx.add_shape(type="rect", x0=0, y0=0, x1=img_width, y1=img_height, line=dict(color="purple", width=5), fillcolor="rgba(255,255,255,255)", name="Image Size")
+    
+    figx.add_trace(go.Scatter(x=[pp1_x], y=[pp1_y],
+                            mode='markers+text',
+                            marker=dict(color='blue', size=10),
+                            text=[f"PP1 ({pp1_x:.2f}, {pp1_y:.2f})"],
+                            textposition="top center",
+                            name="Principal Point 1"))
+    figx.add_trace(go.Scatter(x=[pp2_x], y=[pp2_y],
+                            mode='markers+text',
+                            marker=dict(color='red', size=10),
+                            text=[f"PP2 ({pp2_x:.2f}, {pp2_y:.2f})"],
+                            textposition="top center",
+                            name="Principal Point 2"))
+    
+    # Set the layout for the figure
+    figx.update_layout(title="Principal Points on Rectified Image Size", xaxis_title="Image Width", yaxis_title="Image Height")
+
+    figx.update_xaxes(range=[min(pp1_x, pp2_x, 0) - 100, max(pp1_x, pp2_x, img_width) + 100], showgrid=False)
+    figx.update_yaxes(range=[min(pp1_y, pp2_y, 0) - 100, max(pp1_y, pp2_y, img_height) + 100], showgrid=False, zeroline=False)
+
+    st.plotly_chart(figx, use_container_width=True)
+
 st.title("📷 Image Rectification Page")
 st.markdown("""Upload stereo images and a calibration file to perform image rectification. Set output directory, scale factor, and toggle Camera 1 perspective.""")
 
 # File inputs
+
+folder_mode = st.radio("Select Input Mode", ("Folder Selection", "File Upload"), index=0, horizontal=True)
 col1, col2 = st.columns(2)
 
+# File uploaders for Cam 1 and Cam 2
 with col1:
-    image1_path = st.file_uploader("**Upload Cam 1 Image**", type=["png", "jpg", "jpeg"])
-    
-    img_1 = streamlit_image_loader(image1_path, seesion_id="Cam_1_uploaded")
-    
-    if img_1 is not None:
-        if st.session_state.Cam_1_uploaded == "Uploaded":
-            st.toast("Cam 1 image uploaded successfully!", icon="✅")
-            st.session_state.Cam_1_uploaded = "Not uploaded"
-        elif st.session_state.Cam_1_uploaded == "Failure":
-            st.error("Error reading Cam 1 image. Please check the file format.")
+
+    if folder_mode == "Folder Selection":
+
+        folder_path_cam1 = st.text_input("**Select Folder Containing Images for Cam 1**", value="")
+        available_images_cam1, available_images_names_cam1 = get_images_from_folder(folder_path_cam1)
+
+        if len(available_images_cam1) > 0:
+            image1_path = st.selectbox("**Select Cam 1 Image**", options=available_images_cam1, format_func=lambda x: available_images_names_cam1[available_images_cam1.index(x)])
+            # image1_path = st.selectbox("**Select Cam 1 Image**", options=available_images_cam1)
+            img_1 = streamlit_image_loader(image1_path, seesion_id="Cam_1_uploaded")
+        else:
+            image1_path = None
+
+    else:
+        image1_path = st.file_uploader("**Upload Cam 1 Image**", type=["png", "jpg", "jpeg"])
+        img_1 = streamlit_image_loader(image1_path, seesion_id="Cam_1_uploaded")
+        
+    #check if img_1 variable exists or not
+
+    if "img_1" in locals():
+        if img_1 is not None:
+            if st.session_state.Cam_1_uploaded == "Uploaded":
+
+                st.toast("Cam 1 image uploaded successfully!", icon="✅")
+                st.session_state.img1_size = [img_1.shape[1],img_1.shape[0]]
+                st.session_state.Cam_1_uploaded = "Not uploaded"
+
+            elif st.session_state.Cam_1_uploaded == "Failure":
+                st.error("Error reading Cam 1 image. Please check the file format.")
 
 with col2:
-    image2_path = st.file_uploader("**Upload Cam 2 Image**", type=["png", "jpg", "jpeg"])
-    
-    img_2 = streamlit_image_loader(image2_path, seesion_id="Cam_2_uploaded")
 
-    if img_2 is not None:
-        if st.session_state.Cam_2_uploaded == "Uploaded":
-            st.session_state.Cam_2_uploaded = "Not uploaded"
-            st.toast("Cam 2 image uploaded successfully!", icon="✅")
+    if folder_mode == "Folder Selection":
+
+        folder_path_cam2 = st.text_input("**Select Folder Containing Images for Cam 2**", value="")
+        available_images_cam2, available_images_names_cam2 = get_images_from_folder(folder_path_cam2)
+
+        if len(available_images_cam2) > 0:
+            image2_path = st.selectbox("**Select Cam 2 Image**", options=available_images_cam2, format_func=lambda x: available_images_names_cam2[available_images_cam2.index(x)])
+            # image2_path = st.selectbox("**Select Cam 2 Image**", options=available_images_cam2)
+            img_2 = streamlit_image_loader(image2_path, seesion_id="Cam_2_uploaded")
+        else:
+            image2_path = None
+
+    else:
             
-        elif st.session_state.Cam_2_uploaded == "Failure":
-            st.error("Error reading Cam 2 image. Please check the file format.")
+        image2_path = st.file_uploader("**Upload Cam 2 Image**", type=["png", "jpg", "jpeg"])
+        img_2 = streamlit_image_loader(image2_path, seesion_id="Cam_2_uploaded")
+    
+    if "img_2" in locals():
+        if img_2 is not None:
+            if st.session_state.Cam_2_uploaded == "Uploaded":
+                st.session_state.Cam_2_uploaded = "Not uploaded"
+                st.toast("Cam 2 image uploaded successfully!", icon="✅")
+            elif st.session_state.Cam_2_uploaded == "Failure":
+                st.error("Error reading Cam 2 image. Please check the file format.")
 
 # Calibration file input
 calib_file = st.file_uploader("Upload Calibration JSON File", type="json")
 
 # Load calibration data
 calib_yaml = streamlit_calibration_loader(calib_file)
+
 if calib_yaml is not None:
     # Retrieve the number of cameras and reference camera index
     num_cameras = calib_yaml.get_num_cameras()
@@ -318,18 +439,86 @@ if calib_yaml is not None:
     # Update calibration parameters based on selected camera indices
     # st.session_state.calibration_param = calib_yaml.get_calibration_for_cameras_by_index(cam1_index, cam2_index, scale_factor=1.0, dict_format=True)
 
-
 # Output directory
 output_base_dir = st.text_input("**Output Directory**", value=suggest_next_folder_name("output", "batch_"))
 
 # Adjusted layout for scale factor and camera perspective toggle
-colId1 = st.columns([6,2,1], vertical_alignment="top")
+colId1 = st.columns([4,1,1,2,1], vertical_alignment="top")
 
 with colId1[0]:
     scale_factor = st.slider("**Scale Factor**", min_value=0.0, max_value=1.0, value=0.25, step=0.05)
 
-#add a selection box for flag for cv2.stereoRectify flags and set one of them as default
 with colId1[1]:
+    # Create selectbox for predefined width options
+
+    if st.session_state.img1_size is not None and img_1 is not None:
+
+        default_widthx = st.session_state.img1_size[0] * 0.25
+        
+        predefined_widths = [
+            default_widthx * 1.00,
+            default_widthx * 1.25,
+            default_widthx * 1.5,
+            default_widthx * 1.75,
+            default_widthx * 2.0,
+            "Custom..."
+        ]
+
+        width_selection = st.selectbox(
+            "**Select New Width**",
+            options=predefined_widths,
+            format_func=lambda x: f"{int(x)}" if x != "Custom..." else x)
+
+        # Handle custom width input
+        if width_selection == "Custom...":
+            new_rectification_width = int(st.text_input("Enter custom width...", value=str(int(default_widthx))))
+        else:
+            new_rectification_width = int(width_selection)
+    else:
+        new_rectification_width = int(st.text_input("**New Width**", value="1368"))
+    
+    # if st.session_state.img1_size is not None:
+    #     default_width = st.session_state.img1_size[0] *0.25
+    #     # st.write(st.session_state.img1_size)
+    # else:
+    #     default_width = 800
+    
+    # new_rectification_width = int(st.text_input("**New Width**", value=str(default_width)))
+    # default_width = img1_size[0] if "img1_size" in locals() and img1_size else 800
+    # new_rectification_width = int(st.text_input("**New Width**", value=str(default_width)))
+
+with colId1[2]:
+
+    if st.session_state.img1_size is not None and img_1 is not None:
+
+        default_heightx = st.session_state.img1_size[1] * 0.25
+
+        predefined_heights = [
+            default_heightx * 1.00,
+            default_heightx * 1.25,
+            default_heightx * 1.5,
+            default_heightx * 1.75,
+            default_heightx * 2.0,
+            "Custom..."
+        ]
+
+        height_selection = st.selectbox(
+            "**Select New Height**",
+            options=predefined_heights,
+            format_func=lambda x: f"{int(x)}" if x != "Custom..." else x)
+
+        # Handle custom height input
+
+        if height_selection == "Custom...":
+            new_rectification_height = int(st.text_input("Enter custom height...", value=str(int(default_heightx))))
+
+        else:
+            new_rectification_height = int(height_selection)
+
+    else:
+        new_rectification_height = int(st.text_input("**New height**", value="912"))
+
+with colId1[3]:
 
     stereoRectify_flags_labels = ["cv2.CALIB_ZERO_TANGENT_DIST", "cv2.CALIB_SAME_FOCAL_LENGTH", "cv2.CALIB_ZERO_DISPARITY"]
     stereoRectify_flags = [8, 512,1024]
@@ -340,11 +529,11 @@ with colId1[1]:
         index=0,
         format_func=lambda x: stereoRectify_flags_labels[stereoRectify_flags.index(x)]
     )
-    st.write(selected_stereoRectify_flag)
-with colId1[2]:
+    # st.write(selected_stereoRectify_flag)
+
+with colId1[4]:
     cam1_perspective = st.toggle("**Use Camera 1 Perspective**", value=True)
 
-# Rearranged buttons and toggle horizontally for better layout
 colId2 = st.columns([1.5, 1.5, 1.5, 2, 6], vertical_alignment="center")
 
 with colId2[0]:
@@ -355,13 +544,11 @@ with colId2[0]:
         st.session_state.visualize_rectification_images_button_activate_state = True
         st.session_state.save_rectified_button_activate_state = True
 
-
 with colId2[1]:
     
     if st.button("Save Rectified Images", key="save_rectified_button", use_container_width=True, disabled=not st.session_state.save_rectified_button_activate_state):
         st.session_state.save_rectified_button_state = True
         
-
 with colId2[2]:
 
     visualize_disabled = not st.session_state.visualize_camera_position_button_activate_state
@@ -374,7 +561,7 @@ with colId2[3]:
 
     if st.button("Visualize Rectification Images", key="visualize_rectification_images_button", use_container_width=True, disabled=visualize_rectification_images):
         st.session_state.visualize_rectification_images_button_state = True
-        
+
 if st.session_state.rectify_button_state:
     
     if not image1_path or not image2_path or not calib_file:
@@ -391,35 +578,38 @@ if st.session_state.rectify_button_state:
         st.session_state.img_size = transpose_image_size(img_size_resized)  
         
         if cam1_perspective:
-            print(selected_stereoRectify_flag)
             # Generate rectification maps using the scaled parameters and new image size
-            map1x, map1y, map2x, map2y, P1, P2, Q = generate_rectify_data(st.session_state.calibration_param["K1"], st.session_state.calibration_param["K2"], st.session_state.calibration_param["R"], st.session_state.calibration_param["T"], st.session_state.calibration_param["D1"], st.session_state.calibration_param["D2"], st.session_state.img_size, selected_stereoRectify_flag)
-
-            #shape of map1x and map1y
-            st.write(f"Shape of map1x: {map1x.shape}, map1y: {map1y.shape}")
-            st.write(f"Shape of map2x: {map2x.shape}, map2y: {map2y.shape}")
-            st.write("map1x")
-            st.write(map1x)
-            # Rectify the resized images
+            new_rectification_img_size = [new_rectification_width, new_rectification_height]
+            map1x, map1y, map2x, map2y, P1, P2, Q, evaluation_data = generate_rectify_data(st.session_state.calibration_param["K1"], st.session_state.calibration_param["K2"], st.session_state.calibration_param["R"], st.session_state.calibration_param["T"], st.session_state.calibration_param["D1"], st.session_state.calibration_param["D2"], st.session_state.img_size, selected_stereoRectify_flag, new_rectification_img_size)
+            
+            st.session_state.P1 = P1
+            st.session_state.P2 = P2
+            
             st.session_state.rectified_img1 = rectify(img_1_resized, map1x, map1y)
             st.session_state.rectified_img2 = rectify(img_2_resized, map2x, map2y)
-            
-        
+             
         else:
 
             R_2_to_1 = st.session_state.calibration_param["R"].T
             T_2_to_1 = -st.session_state.calibration_param["R"].T @ st.session_state.calibration_param["T"]
+            
             # Generate rectify data with right camera as reference
-            map_x_new_1, map_y_new_1, map_x_new_2, map_y_new_2, P1_new, P2_new, Q_new = generate_rectify_data(st.session_state.calibration_param["K2"], st.session_state.calibration_param["K1"], R_2_to_1, T_2_to_1, st.session_state.calibration_param["D2"], st.session_state.calibration_param["D1"], st.session_state.img_size, selected_stereoRectify_flag)
+            new_rectification_img_size = [new_rectification_width, new_rectification_height]
+            map_x_new_1, map_y_new_1, map_x_new_2, map_y_new_2, P1_new, P2_new, Q_new, evaluation_data = generate_rectify_data(st.session_state.calibration_param["K2"], st.session_state.calibration_param["K1"], R_2_to_1, T_2_to_1, st.session_state.calibration_param["D2"], st.session_state.calibration_param["D1"], st.session_state.img_size, selected_stereoRectify_flag, new_rectification_img_size)
+
+            st.session_state.P1 = P1_new
+            st.session_state.P2 = P2_new
 
             st.session_state.rectified_img2 = rectify(img_2_resized, map_x_new_1, map_y_new_1)
             st.session_state.rectified_img1 = rectify(img_1_resized, map_x_new_2, map_y_new_2)
-
+            
             st.session_state.calibration_param["R"] = R_2_to_1
             st.session_state.calibration_param["T"] = T_2_to_1
         
-        st.session_state.rectify_button_state = False  # Reset the button state after rectification
-        
+        # Check if the principal points lie inside the rectified images
+        rectification_quality_analysis(st.session_state.img_size, evaluation_data)
+
+        st.session_state.rectify_button_state = False  # Reset the button state after rectification        
         st.success("Rectification completed successfully!")
 
 if st.session_state.save_rectified_button_state:
@@ -430,6 +620,8 @@ if st.session_state.save_rectified_button_state:
         
         # Save the rectified images
         save_images(st.session_state.rectified_img1, st.session_state.rectified_img2, output_base_dir)
+
+        save_rectification_artifacts(st.session_state.P1, st.session_state.P2, output_base_dir)
 
         # Save scaled calibration parameters
         save_scaled_calibration_parameters(st.session_state.calibration_param["K1"], st.session_state.calibration_param["D1"], st.session_state.calibration_param["K2"], st.session_state.calibration_param["D2"], st.session_state.calibration_param["R"], st.session_state.calibration_param["T"], st.session_state.img_size, scale_factor, output_base_dir)
@@ -454,7 +646,6 @@ if st.session_state.visualize_camera_position_button_state:
         else:
             visualize_camera_position()
             st.session_state.visualize_camera_position_button_state = False
-
 
 if st.session_state.visualize_rectification_images_button_state:
     # Check if all required files are uploaded
