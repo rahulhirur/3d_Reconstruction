@@ -13,9 +13,9 @@ st.markdown("This is the **Home page** of the Cloud Maker app. Navigate through 
 # Navigation tiles
 st.subheader("Navigation", divider=True)
 
-col1, col2, col3, col4 = st.columns(4, gap="small")
+cols = st.columns(5, gap="small")
 
-with col1:
+with cols[0]:
 
     rectification_clicked = streamlit_tile(
         title="Image Rectification",
@@ -24,7 +24,7 @@ with col1:
         color_theme="blue",
         key="rectification_tile")
 
-with col2:
+with cols[1]:
 
     disparity_clicked = streamlit_tile(
         title="Disparity Calculator",
@@ -34,7 +34,7 @@ with col2:
         key="disparity_tile"
     )
     
-with col3:
+with cols[2]:
     
     pointcloud_clicked = streamlit_tile(
         title="Point Cloud Generator",
@@ -45,7 +45,17 @@ with col3:
     )
 
 
-with col4:
+# Add a tile for JSON Viewer
+with cols[3]:
+
+    json_viewer_clicked = streamlit_tile(
+        title="JSON Viewer",
+        description="View and edit JSON files",
+        icon="article",
+        color_theme="purple",
+        key="json_viewer_tile"
+    )
+with cols[4]:
     
     settings_clicked = streamlit_tile(
         title="Settings",
@@ -54,7 +64,7 @@ with col4:
         color_theme="yellow",
         key="settings_tile"
     )
-    
+
 
 # Handle tile clicks
 if rectification_clicked:
@@ -75,3 +85,6 @@ if settings_clicked:
     st.badge(f":material/engineering:"*32, color="orange")
 
     # st.switch_page("pages/Settings.py")
+if json_viewer_clicked:
+    st.info("📄 Navigating to JSON Viewer...")
+    st.switch_page("pages/04_json_viewer.py")
