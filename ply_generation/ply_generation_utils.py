@@ -7,7 +7,8 @@ def generate_pcd(
         output_base_dir: str,
         threshold_value: int = 480,
         resize_disparity: bool = True,
-        visualize_disparity: bool = True
+        visualize_disparity: bool = True,
+        name_timestamp: bool = True
 ):
 
     disp = np.load(disp_path)
@@ -34,9 +35,7 @@ def generate_pcd(
     cl, ind = point_cloud.remove_statistical_outlier(nb_neighbors=20, std_ratio=0.5)
     point_cloud = point_cloud.select_by_index(ind)
 
-    outpath = save_point_cloud(point_cloud, output_base_dir)
-
-    
+    outpath = save_point_cloud(point_cloud, output_base_dir, name_timestamp)
 
     if visualize_disparity:
         show_image(vis, title="Disparity Map")

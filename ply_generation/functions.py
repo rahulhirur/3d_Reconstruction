@@ -14,6 +14,7 @@ from scipy.ndimage import zoom
 import os
 
 
+
 class bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -24,6 +25,8 @@ class bcolors:
     ENDC = '\033[0m'
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
+
+# Create a function to create output directory if it doesn't exist
 
 def load_camera_intrinsics(calibration_data, camera_index):
     """
@@ -365,13 +368,17 @@ def resize_2D_data(array, scale_factor, interpolation_order='cubic'):
 
     return resized
 
-def save_point_cloud(point_cloud, output_base_dir):
+def save_point_cloud(point_cloud, output_base_dir, name_timestamp=True):
     try:
 
         if not os.path.exists(output_base_dir):
             os.makedirs(output_base_dir)
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        outpath = os.path.join(output_base_dir, f'cloud_{timestamp}.ply')
+        
+        if name_timestamp:
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            outpath = os.path.join(output_base_dir, f'point_cloud_{timestamp}.ply')
+        else:
+            outpath = os.path.join(output_base_dir, 'point_cloud.ply')
         o3d.io.write_point_cloud(outpath, point_cloud)
         print(f"{bcolors.OKGREEN} Point cloud saved to {outpath} {bcolors.ENDC}")
         return outpath
@@ -382,6 +389,7 @@ def save_point_cloud(point_cloud, output_base_dir):
         return None
 
 def load_rectification_artifacts(json_file_path):
+
     """
     Load rectification artifacts (P1 and P2 matrices) from a JSON file.
 
