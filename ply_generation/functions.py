@@ -13,8 +13,6 @@ import plotly.express as px
 from scipy.ndimage import zoom
 import os
 
-
-
 class bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -27,7 +25,6 @@ class bcolors:
     UNDERLINE = '\033[4m'
 
 # Create a function to create output directory if it doesn't exist
-
 def load_camera_intrinsics(calibration_data, camera_index):
     """
     Extracts and formats camera calibration data for a specific camera index.
