@@ -602,7 +602,7 @@ if st.session_state.rectify_button_state:
 
             st.session_state.rectified_img2 = rectify(img_2_resized, map_x_new_1, map_y_new_1)
             st.session_state.rectified_img1 = rectify(img_1_resized, map_x_new_2, map_y_new_2)
-            
+
             st.session_state.calibration_param["R"] = R_2_to_1
             st.session_state.calibration_param["T"] = T_2_to_1
         
@@ -632,7 +632,8 @@ if st.session_state.save_rectified_button_state:
 
         st.success("Rectified images and calibration data saved successfully!")
         st.session_state.save_rectified_button_state = False  # Reset the button state after saving
-        st.session_state.save_rectified_button_activate_state = False
+        st.session_state.save_rectified_button_activate_state = True
+        st.toast("Rectified images and calibration data saved successfully!")
         st.rerun()
 
 if st.session_state.visualize_camera_position_button_state:

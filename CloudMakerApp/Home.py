@@ -13,9 +13,9 @@ st.markdown("This is the **Home page** of the Cloud Maker app. Navigate through 
 # Navigation tiles
 st.subheader("Navigation", divider=True)
 
-cols = st.columns(5, gap="small")
+cols1 = st.columns(5, gap="small")
 
-with cols[0]:
+with cols1[0]:
 
     rectification_clicked = streamlit_tile(
         title="Image Rectification",
@@ -24,7 +24,7 @@ with cols[0]:
         color_theme="blue",
         key="rectification_tile")
 
-with cols[1]:
+with cols1[1]:
 
     disparity_clicked = streamlit_tile(
         title="Disparity Calculator",
@@ -34,7 +34,7 @@ with cols[1]:
         key="disparity_tile"
     )
     
-with cols[2]:
+with cols1[2]:
     
     pointcloud_clicked = streamlit_tile(
         title="Point Cloud Generator",
@@ -45,8 +45,18 @@ with cols[2]:
     )
 
 
-# Add a tile for JSON Viewer
-with cols[3]:
+with cols1[3]:
+    
+    pc_gen_clicked = streamlit_tile(
+        title="Compare Point cloud",
+        description="Compare point cloud datsets",
+        icon="compare_arrows",
+        color_theme="blue;",
+        key="pcdCompareTool"
+    )
+
+
+with cols1[4]:
 
     json_viewer_clicked = streamlit_tile(
         title="JSON Viewer",
@@ -55,7 +65,11 @@ with cols[3]:
         color_theme="purple",
         key="json_viewer_tile"
     )
-with cols[4]:
+
+
+cols2 = st.columns(5, gap="small")
+
+with cols2[0]:
     
     settings_clicked = streamlit_tile(
         title="Settings",
@@ -85,6 +99,11 @@ if settings_clicked:
     st.badge(f":material/engineering:"*32, color="orange")
 
     # st.switch_page("pages/Settings.py")
+
+if pc_gen_clicked:
+    st.info("📄 Navigating to Point Cloud Compare...")
+    st.switch_page("pages/04_Compare_PointCloud.py")
+
 if json_viewer_clicked:
     st.info("📄 Navigating to JSON Viewer...")
-    st.switch_page("pages/04_json_viewer.py")
+    st.switch_page("pages/05_json_viewer.py")
