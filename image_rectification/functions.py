@@ -282,6 +282,7 @@ class CalibrationLoader:
             return self.loader.get_num_cameras()
         else:
             raise NotImplementedError("This method should be implemented in the loader class.")
+    
     # get the reference camera index ( refrence camera is the camera whose rotation and translation vector is zero)
     def get_reference_camera_index(self):
         """
@@ -390,8 +391,8 @@ def save_images(rectified_img1, rectified_img2, output_base_dir="/output"):
     print(f"Ensured output directory exists: {output_base_dir}")
     
     # Define the filenames for the rectified images
-    rectified_img1_path = os.path.join(output_base_dir, "rectified_left.png")
-    rectified_img2_path = os.path.join(output_base_dir, "rectified_right.png")
+    rectified_img1_path = os.path.join(output_base_dir, "rectified_img1.png")
+    rectified_img2_path = os.path.join(output_base_dir, "rectified_img2.png")
 
     # Save the rectified images
     cv2.imwrite(rectified_img1_path, rectified_img1)
