@@ -91,6 +91,8 @@ def stereo_rectify(
         # Save rectified images and scaled calibration parameters
         save_images(rectified_img1, rectified_img2, output_base_dir=output_base_dir)
 
+        
+
         save_scaled_calibration_parameters(K1_scaled, D1_scaled, K2_scaled, D2_scaled,
                                             R_scaled, T_scaled, img_size, new_scale_factor,
                                             output_dir=output_base_dir)

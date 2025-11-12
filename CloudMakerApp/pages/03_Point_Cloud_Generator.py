@@ -54,6 +54,7 @@ st.set_page_config(
 )
 
 st.title("☁️ 3D Point Cloud Generation")
+
 st.markdown("""
 Upload the required files to generate a 3D point cloud:
 - Disparity file (NumPy format)

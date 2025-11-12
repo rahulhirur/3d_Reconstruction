@@ -24,8 +24,7 @@ def main():
         scale_factor=args.scale_factor,
         cam1_perspective=args.cam1_perspective,
         save_data=args.save_data,
-        show_images=args.show_images
-    )
+        show_images=args.show_images)
 
 if __name__ == "__main__":
     main()

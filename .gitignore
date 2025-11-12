@@ -10,7 +10,19 @@ input/
 output/
 # Ignore the GroundTruth folder
 GroundTruth/
-# Ignore testFile.py
-testFile.py
-# Ignore testFile2.py
-testFile2.py
+#Ignore files which start with testFile and end with .py
+testFile*.py
+
+# Ignore files
+*.drawio
+*.csv
+
+# Ignore individual 
+Something.npy
+my_dashboard.html
+multiple_plots.html
+KMEAN_TEST.py
+
+
+
+

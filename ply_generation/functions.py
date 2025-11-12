@@ -220,12 +220,12 @@ def numpy_to_o3d(pcd_np):
     tmp.points = o3d.utility.Vector3dVector(valid_pcd)
     return tmp
 
-def vis_disparity(disp, min_val=None, max_val=None, invalid_thres=np.inf, color_map=cv2.COLORMAP_TURBO, cmap=None, other_output={}):
+def vis_disparity(dispx, min_val=None, max_val=None, invalid_thres=np.inf, color_map=cv2.COLORMAP_TURBO, cmap=None, other_output={}):
   """
   @disp: np array (H,W)
   @invalid_thres: > thres is invalid
   """
-  disp = disp.copy()
+  disp = dispx.copy()
   H,W = disp.shape[:2]
   invalid_mask = disp>=invalid_thres
   if (invalid_mask==0).sum()==0:
@@ -257,6 +257,7 @@ def rectify(img, map_x, map_y):
     return cv2.remap(img, map_x, map_y, interpolation=cv2.INTER_NEAREST, borderMode=cv2.BORDER_CONSTANT)
 
 def disparity_to_point_cloud(P1, P2, disp_l):
+    
     cam_pts_l, cam_pts_r = [], []
     for i in range(disp_l.shape[0]):
         for j in range(disp_l.shape[1]):
@@ -312,6 +313,38 @@ def show_contour_map(disp):
                       margin=dict(l=65, r=50, b=65, t=90))
 
     fig.show(renderer="browser")
+
+def overlay_disparity_on_image(image, disp, alpha=0.6, colormap=cv2.COLORMAP_JET):
+    """
+    Overlays a disparity map on top of an image.
+
+    Args:
+        image (numpy.ndarray): The base image (H, W, 3).
+        disp (numpy.ndarray): The disparity map (H, W).
+        alpha (float): Transparency factor for the overlay. Default is 0.6.
+        colormap (int): OpenCV colormap to apply to the disparity map. Default is cv2.COLORMAP_JET.
+
+    Returns:
+        numpy.ndarray: The resulting image with the disparity overlay.
+    """
+    # Normalize disparity map to 0-255
+    disp_normalized = cv2.normalize(disp, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+    
+    # Apply colormap to the normalized disparity map
+    disp_colored = cv2.applyColorMap(disp_normalized, colormap)
+    
+    # Ensure the input image is in the correct format
+    if image.dtype != np.uint8:
+        image = (image * 255).astype(np.uint8)
+    
+    # Resize disparity map to match image size if necessary
+    if disp_colored.shape[:2] != image.shape[:2]:
+        disp_colored = cv2.resize(disp_colored, (image.shape[1], image.shape[0]))
+    
+    # Overlay the colored disparity map on the original image
+    overlayed_image = cv2.addWeighted(image, 1 - alpha, disp_colored, alpha, 0)
+    
+    return overlayed_image
 
 def resize_2D_data(array, scale_factor, interpolation_order='cubic'):
     """

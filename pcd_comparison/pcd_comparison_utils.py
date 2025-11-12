@@ -30,6 +30,8 @@ def compare_pcd(source_file, target_file, threshold, trans_init_method, max_iter
         save_comparison_results(output_dir, result_transformation, rmse, chamfer, hausdorff)
         print(f"Comparison results saved to {output_dir}")
     
+    return rmse
+    
     
     #Create a function of the above code to save json file
 

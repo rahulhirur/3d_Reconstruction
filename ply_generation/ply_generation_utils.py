@@ -8,8 +8,7 @@ def generate_pcd(
         threshold_value: int = 480,
         resize_disparity: bool = True,
         visualize_disparity: bool = True,
-        name_timestamp: bool = True
-):
+        name_timestamp: bool = True):
 
     disp = np.load(disp_path)
 

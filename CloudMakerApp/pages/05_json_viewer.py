@@ -1,6 +1,7 @@
 import streamlit as st
 import json
 import plotly.graph_objects as go
+import numpy as np
 
 st.title("JSON Viewer")
 
@@ -15,5 +16,8 @@ if uploaded_file is not None:
         # Display the JSON content
         st.subheader("JSON Content")
         st.json(json_data)
+
+        
+
     except json.JSONDecodeError:
         st.error("Invalid JSON file. Please upload a valid JSON file.")

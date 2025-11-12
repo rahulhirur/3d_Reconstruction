@@ -14,17 +14,14 @@ from ply_generation.ply_generation_utils import generate_pcd
 from pcd_comparison.pcd_comparison_utils import compare_pcd
 
 
-def run_reconstruction(left_img_path, right_img_path, params_json_path, ground_truth_pcd_path,  out_dir, scale_factor=0.25, cam1_perspective=True, save_data=True, show_images=False):
+def run_reconstruction(left_img_path, right_img_path, params_json_path, ground_truth_pcd_path,  output_dir, scale_factor=0.25, cam1_perspective=True, save_data=True, show_images=False):
     """
     Runs the full 3D reconstruction pipeline from start to finish.
     """
 
     print("Starting pipeline...")
     
-    output_dir = suggest_next_folder_name(out_dir)
-    os.makedirs(output_dir, exist_ok=True)
     print(f"Output directory created: {output_dir}")
-
 
     # 1. Load prerequisites
     print("Step 0: Loading prerequisites...")
@@ -48,7 +45,6 @@ def run_reconstruction(left_img_path, right_img_path, params_json_path, ground_t
         show_images=show_images
     )
     
-
     # 3. Disparity calculation
     print("Step 2: Calculating disparity map...")
 
@@ -78,7 +74,6 @@ def run_reconstruction(left_img_path, right_img_path, params_json_path, ground_t
         name_timestamp=False
     )
 
-
     ply_file_path = os.path.join(output_cloud_dir, "point_cloud.ply")  # Path to the generated PLY file
 
     # 5. PCD comparison (optional)
@@ -87,6 +82,11 @@ def run_reconstruction(left_img_path, right_img_path, params_json_path, ground_t
         trans_init_method = "identity"  # or "random" based on your requirement
         threshold = 0.05  # Set a threshold for comparison, adjust as needed
         max_iter = 200
-        compare_pcd(ply_file_path, ground_truth_pcd_path, threshold, trans_init_method, max_iter, output_dir=None)
+
+        rmse = compare_pcd(ply_file_path, ground_truth_pcd_path, threshold, trans_init_method, max_iter, output_dir=None)
+        return rmse
+    else:
+        print("No ground truth PCD provided, skipping comparison step.")
+        return None
 
     print("Pipeline completed successfully! ✨")

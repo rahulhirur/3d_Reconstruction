@@ -24,6 +24,7 @@ st.title(":material/token: Disparity Calculation")
 
 # File uploaders for stereo images
 col1, col2 = st.columns(2)
+
 left_file = col1.file_uploader("Upload Left Image", type=["png", "jpg", "jpeg"])
 right_file = col2.file_uploader("Upload Right Image", type=["png", "jpg", "jpeg"])
 

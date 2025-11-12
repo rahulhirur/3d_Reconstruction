@@ -44,7 +44,6 @@ with cols1[2]:
         key="pointcloud_tile"
     )
 
-
 with cols1[3]:
     
     pc_gen_clicked = streamlit_tile(
@@ -54,7 +53,6 @@ with cols1[3]:
         color_theme="blue;",
         key="pcdCompareTool"
     )
-
 
 with cols1[4]:
 
@@ -66,10 +64,19 @@ with cols1[4]:
         key="json_viewer_tile"
     )
 
-
 cols2 = st.columns(5, gap="small")
 
 with cols2[0]:
+    
+    dd_clicked = streamlit_tile(
+        title=f"Depth Convertor",
+        description="Convert between depth and disparity maps",
+        icon="cached",
+        color_theme="blue",
+        key="dd_tile"
+    )
+
+with cols2[1]:
     
     settings_clicked = streamlit_tile(
         title="Settings",
@@ -107,3 +114,7 @@ if pc_gen_clicked:
 if json_viewer_clicked:
     st.info("📄 Navigating to JSON Viewer...")
     st.switch_page("pages/05_json_viewer.py")
+
+if dd_clicked:
+    st.info(":material/cached: Navigating to Disparity Convertor...")
+    st.switch_page("pages/06_disparity_to_depth.py")

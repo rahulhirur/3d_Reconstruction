@@ -1,7 +1,7 @@
 import argparse
 import os
 import json
-from pcd_generation_utils import generate_pcd
+from ply_generation_utils import generate_pcd
 
 def main():
     """
